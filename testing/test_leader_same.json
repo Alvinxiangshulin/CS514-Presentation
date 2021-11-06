@@ -1,7 +1,36 @@
 {
     "rpc_res": [
         {
-            "term":
+            "term": 1,
+            "success": true
+        },
+        {
+            "term": 1,
+            "success": true
+        },
+        {
+            "term": 1,
+            "success": true
+        },
+        {
+            "term": 2,
+            "success": true
+        },
+        {
+            "term": 3,
+            "success": true
+        },
+        {
+            "term": 3,
+            "success": true
+        },
+        {
+            "term": 3,
+            "success": true
+        },
+        {
+            "term": 3,
+            "success": true
         }
     ]
 }
