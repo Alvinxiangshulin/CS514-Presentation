@@ -5,7 +5,7 @@
         "leaderId": 0,
         "prevLogIndex": 0,
         "prevLogTerm": 0,
-        "entries": ["add"],
+        "entries": [{"term":1, "index":1, "command":"add"}],
         "leaderCommit": 0
     },
     {
@@ -13,7 +13,7 @@
         "leaderId": 0,
         "prevLogIndex": 1,
         "prevLogTerm": 1,
-        "entries": ["cmp"],
+        "entries": [{"term":1, "index":2, "command":"cmp"}],
         "leaderCommit": 0
     },
     {
@@ -21,7 +21,7 @@
         "leaderId": 0,
         "prevLogIndex": 2,
         "prevLogTerm": 1,
-        "entries": ["ret"],
+        "entries": [{"term":1, "index":3, "command":"ret"}],
         "leaderCommit": 2
     },
     {
@@ -29,7 +29,7 @@
         "leaderId": 0,
         "prevLogIndex": 3,
         "prevLogTerm": 1,
-        "entries": ["mov"],
+        "entries": [{"term":2, "index":4, "command":"mov"}],
         "leaderCommit": 2
     },
     {
@@ -37,7 +37,7 @@
         "leaderId": 0,
         "prevLogIndex": 4,
         "prevLogTerm": 2,
-        "entries": ["jmp"],
+        "entries": [{"term":3, "index":5, "command":"jmp"}],
         "leaderCommit": 2
     },
     {
@@ -45,7 +45,7 @@
         "leaderId": 0,
         "prevLogIndex": 5,
         "prevLogTerm": 3,
-        "entries": ["div"],
+        "entries": [{"term":3, "index":6, "command":"div"}],
         "leaderCommit": 2
     },
     {
@@ -53,7 +53,7 @@
         "leaderId": 0,
         "prevLogIndex": 6,
         "prevLogTerm": 3,
-        "entries": ["shl"],
+        "entries": [{"term":3, "index":7, "command":"shl"}],
         "leaderCommit": 2
     },
     {
@@ -61,7 +61,7 @@
         "leaderId": 0,
         "prevLogIndex": 7,
         "prevLogTerm": 3,
-        "entries": ["sub"],
+        "entries": [{"term":3, "index":8, "command":"sub"}],
         "leaderCommit": 7
     },
     {
