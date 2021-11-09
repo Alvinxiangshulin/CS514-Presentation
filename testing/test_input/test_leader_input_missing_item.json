@@ -12,6 +12,7 @@
             "term": 6,
             "leaderId": 1,
             "prevLogIndex": 9,
+            "prevLogTerm": 6,
             "entries": [{"term":6, "index":10, "command":"add"}],
             "commitIndex": 0
         },
@@ -19,6 +20,7 @@
             "term": 6,
             "leaderId": 1,
             "prevLogIndex": 8,
+            "prevLogTerm": 6,
             "entries": [{"term":6, "index":9, "command":"add"}],
             "commitIndex": 0
         },
@@ -26,6 +28,7 @@
             "term": 6,
             "leaderId": 1,
             "prevLogIndex": 7,
+            "prevLogTerm": 5,
             "entries": [{"term":6, "index":8, "command":"add"}],
             "commitIndex": 0
         },
@@ -33,6 +36,7 @@
             "term": 5,
             "leaderId": 1,
             "prevLogIndex": 6,
+            "prevLogTerm": 5,
             "entries": [{"term":5, "index":7, "command":"add"}],
             "commitIndex": 0
         },
@@ -40,6 +44,7 @@
             "term": 5,
             "leaderId": 1,
             "prevLogIndex": 5,
+            "prevLogTerm": 4,
             "entries": [{"term":5, "index":6, "command":"add"}],
             "commitIndex": 0
         },
@@ -47,6 +52,7 @@
             "term": 4,
             "leaderId": 1,
             "prevLogIndex": 4,
+            "prevLogTerm": 4,
             "entries": [{"term":4, "index":5, "command":"add"}],
             "commitIndex": 0
         },
@@ -54,6 +60,7 @@
             "term": 5,
             "leaderId": 1,
             "prevLogIndex": 5,
+            "prevLogTerm": 4,
             "entries": [{"term":5, "index":6, "command":"add"}],
             "commitIndex": 0
         },
@@ -61,6 +68,7 @@
             "term": 5,
             "leaderId": 1,
             "prevLogIndex": 6,
+            "prevLogTerm": 5,
             "entries": [{"term":5, "index":7, "command":"add"}],
             "commitIndex": 0
         },
@@ -68,6 +76,7 @@
             "term": 6,
             "leaderId": 1,
             "prevLogIndex": 7,
+            "prevLogTerm": 5,
             "entries": [{"term":6, "index":8, "command":"add"}],
             "commitIndex": 0
         },
@@ -75,6 +84,7 @@
             "term": 6,
             "leaderId": 1,
             "prevLogIndex": 8,
+            "prevLogTerm": 6,
             "entries": [{"term":6, "index":9, "command":"add"}],
             "commitIndex": 0
         },
@@ -82,6 +92,7 @@
             "term": 6,
             "leaderId": 1,
             "prevLogIndex": 9,
+            "prevLogTerm": 6,
             "entries": [{"term":6, "index":10, "command":"add"}],
             "commitIndex": 0
         },
@@ -89,6 +100,7 @@
             "term": 7,
             "leaderId": 1,
             "prevLogIndex": 10,
+            "prevLogTerm": 6,
             "entries": [{"term":7, "index":11, "command":"add"}],
             "commitIndex": 0
         }
