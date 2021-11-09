@@ -1,76 +1,76 @@
 {
     "rpcs":[
         {
-        "term": 1,
-        "leaderId": 0,
-        "prevLogIndex": 0,
-        "prevLogTerm": 0,
-        "entries": [{"term":1, "index":1, "command":"add"}],
-        "leaderCommit": 0
-    },
-    {
-        "term": 1,
-        "leaderId": 0,
-        "prevLogIndex": 1,
-        "prevLogTerm": 1,
-        "entries": [{"term":1, "index":2, "command":"cmp"}],
-        "leaderCommit": 0
-    },
-    {
-        "term": 1,
-        "leaderId": 0,
-        "prevLogIndex": 2,
-        "prevLogTerm": 1,
-        "entries": [{"term":1, "index":3, "command":"ret"}],
-        "leaderCommit": 2
-    },
-    {
-        "term": 2,
-        "leaderId": 0,
-        "prevLogIndex": 3,
-        "prevLogTerm": 1,
-        "entries": [{"term":2, "index":4, "command":"mov"}],
-        "leaderCommit": 2
-    },
-    {
-        "term": 3,
-        "leaderId": 0,
-        "prevLogIndex": 4,
-        "prevLogTerm": 2,
-        "entries": [{"term":3, "index":5, "command":"jmp"}],
-        "leaderCommit": 2
-    },
-    {
-        "term": 3,
-        "leaderId": 0,
-        "prevLogIndex": 5,
-        "prevLogTerm": 3,
-        "entries": [{"term":3, "index":6, "command":"div"}],
-        "leaderCommit": 2
-    },
-    {
-        "term": 3,
-        "leaderId": 0,
-        "prevLogIndex": 6,
-        "prevLogTerm": 3,
-        "entries": [{"term":3, "index":7, "command":"shl"}],
-        "leaderCommit": 2
-    },
-    {
-        "term": 3,
-        "leaderId": 0,
-        "prevLogIndex": 7,
-        "prevLogTerm": 3,
-        "entries": [{"term":3, "index":8, "command":"sub"}],
-        "leaderCommit": 7
-    },
-    {
-        "term": 3,
-        "leaderId": 0,
-        "prevLogIndex": 8,
-        "prevLogTerm": 3,
-        "entries": [],
-        "leaderCommit": 8
-    }
+            "term": 1,
+            "leaderId": 0,
+            "prevLogIndex": 0,
+            "prevLogTerm": 0,
+            "entries": [{"term":1, "index":1, "command":"add"}],
+            "leaderCommit": 0
+        },
+        {
+            "term": 1,
+            "leaderId": 0,
+            "prevLogIndex": 1,
+            "prevLogTerm": 1,
+            "entries": [{"term":1, "index":2, "command":"cmp"}],
+            "leaderCommit": 0
+        },
+        {
+            "term": 1,
+            "leaderId": 0,
+            "prevLogIndex": 2,
+            "prevLogTerm": 1,
+            "entries": [{"term":1, "index":3, "command":"ret"}],
+            "leaderCommit": 2
+        },
+        {
+            "term": 2,
+            "leaderId": 0,
+            "prevLogIndex": 3,
+            "prevLogTerm": 1,
+            "entries": [{"term":2, "index":4, "command":"mov"}],
+            "leaderCommit": 2
+        },
+        {
+            "term": 3,
+            "leaderId": 0,
+            "prevLogIndex": 4,
+            "prevLogTerm": 2,
+            "entries": [{"term":3, "index":5, "command":"jmp"}],
+            "leaderCommit": 2
+        },
+        {
+            "term": 3,
+            "leaderId": 0,
+            "prevLogIndex": 5,
+            "prevLogTerm": 3,
+            "entries": [{"term":3, "index":6, "command":"div"}],
+            "leaderCommit": 2
+        },
+        {
+            "term": 3,
+            "leaderId": 0,
+            "prevLogIndex": 6,
+            "prevLogTerm": 3,
+            "entries": [{"term":3, "index":7, "command":"shl"}],
+            "leaderCommit": 2
+        },
+        {
+            "term": 3,
+            "leaderId": 0,
+            "prevLogIndex": 7,
+            "prevLogTerm": 3,
+            "entries": [{"term":3, "index":8, "command":"sub"}],
+            "leaderCommit": 7
+        },
+        {
+            "term": 3,
+            "leaderId": 0,
+            "prevLogIndex": 8,
+            "prevLogTerm": 3,
+            "entries": [],
+            "leaderCommit": 8
+        }
     ]
 }

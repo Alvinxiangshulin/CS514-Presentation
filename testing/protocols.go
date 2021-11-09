@@ -40,6 +40,12 @@ type Log struct {
 	Command string
 }
 
+type LeaderLog struct{
+	Requests AppendReqs
+	Resps Responses
+}
+
+
 func (this *Log) ToStr() string {
 	return fmt.Sprintf("[Term: %d, Index: %d, command: %s]", this.Term, this.Index, this.Command)
 }
@@ -67,6 +73,19 @@ func ParseAppendReqFromFile(filename string) (AppendReqs, error) {
 	requests := AppendReqs{}
 	json.Unmarshal(data, &requests)
 	return requests, nil
+}
+
+
+//parse missing leader log
+func ParseFroMissingLeaderFile(filename string) (LeaderLog, error) {
+	data, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return LeaderLog{}, err
+	}
+
+	payload := LeaderLog{}
+	json.Unmarshal(data, &payload)
+	return payload, nil
 }
 
 func PrintAppendReqs(data *AppendReqs) {

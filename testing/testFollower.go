@@ -98,9 +98,12 @@ func (this *Follower) HandleAppendEntriesRPC(requests *AppendReqs, responses *Re
 }
 
 func main() {
-	data, err := ParseAppendReqFromFile("test_input/test_follower_same.json")
+	//data, err := ParseAppendReqFromFile("test_input/test_follower_same.json")
+	data, err := ParseFroMissingLeaderFile("test_input/test_leader_input_missing_item.json")
+	reqs := data.Requests
+	resp := data.Resps
 	if err == nil {
-		PrintAppendReqs(&data)
+		PrintAppendReqs(&reqs)
 	} else {
 		fmt.Println("err")
 	}
@@ -108,15 +111,16 @@ func main() {
 	responses := Responses{}
 	follower := Follower{}
 	follower.Init()
-	follower.HandleAppendEntriesRPC(&data, &responses)
+	follower.HandleAppendEntriesRPC(&reqs, &responses)
 
 	// open an output file
-	out_file, out_file_err := os.OpenFile("follower_out.json", os.O_CREATE|os.O_WRONLY, 0777)
+	out_file, out_file_err := os.OpenFile("follower_out_missing_follower.json", os.O_CREATE|os.O_WRONLY, 0777)
 	if out_file_err != nil {
 		panic(out_file_err)
 	}
 
 	PrintResps(&responses)
+	PrintResps(&resp)
 
 	writter := bufio.NewWriter(out_file)
 	barr, json_err := json.MarshalIndent(responses, "", "    ")

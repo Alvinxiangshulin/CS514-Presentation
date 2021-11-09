@@ -1,79 +1,122 @@
 {
-    "AppendEntry":[
+    "Requests":[
         {
             "term": 7,
             "leaderId": 1,
             "prevLogIndex": 10,
             "prevLogTerm": 6,
-            "entries": ["add"],
+            "entries": [{"term":7, "index":11, "command":"add"}],
             "commitIndex": 0
         },
-        {
-            "term": 4,
-            "success": false
-        },
-
         {
             "term": 6,
             "leaderId": 1,
             "prevLogIndex": 9,
-            "entries": ["add"],
+            "entries": [{"term":6, "index":10, "command":"add"}],
             "commitIndex": 0
-        },
-        {
-            "term": 4,
-            "success": false
         },
         {
             "term": 6,
             "leaderId": 1,
             "prevLogIndex": 8,
-            "entries": ["add"],
+            "entries": [{"term":6, "index":9, "command":"add"}],
             "commitIndex": 0
-        },
-        {
-            "term": 4,
-            "success": false
         },
         {
             "term": 6,
             "leaderId": 1,
             "prevLogIndex": 7,
-            "entries": ["add"],
+            "entries": [{"term":6, "index":8, "command":"add"}],
             "commitIndex": 0
-        },
-        {
-            "term": 4,
-            "success": false
         },
         {
             "term": 5,
             "leaderId": 1,
             "prevLogIndex": 6,
-            "entries": ["add"],
+            "entries": [{"term":5, "index":7, "command":"add"}],
             "commitIndex": 0
-        },
-        {
-            "term": 4,
-            "success": false
         },
         {
             "term": 5,
             "leaderId": 1,
             "prevLogIndex": 5,
-            "entries": ["add"],
+            "entries": [{"term":5, "index":6, "command":"add"}],
             "commitIndex": 0
-        },
-        {
-            "term": 4,
-            "success": false
         },
         {
             "term": 4,
             "leaderId": 1,
             "prevLogIndex": 4,
-            "entries": ["add"],
+            "entries": [{"term":4, "index":5, "command":"add"}],
             "commitIndex": 0
+        },
+        {
+            "term": 5,
+            "leaderId": 1,
+            "prevLogIndex": 5,
+            "entries": [{"term":5, "index":6, "command":"add"}],
+            "commitIndex": 0
+        },
+        {
+            "term": 5,
+            "leaderId": 1,
+            "prevLogIndex": 6,
+            "entries": [{"term":5, "index":7, "command":"add"}],
+            "commitIndex": 0
+        },
+        {
+            "term": 6,
+            "leaderId": 1,
+            "prevLogIndex": 7,
+            "entries": [{"term":6, "index":8, "command":"add"}],
+            "commitIndex": 0
+        },
+        {
+            "term": 6,
+            "leaderId": 1,
+            "prevLogIndex": 8,
+            "entries": [{"term":6, "index":9, "command":"add"}],
+            "commitIndex": 0
+        },
+        {
+            "term": 6,
+            "leaderId": 1,
+            "prevLogIndex": 9,
+            "entries": [{"term":6, "index":10, "command":"add"}],
+            "commitIndex": 0
+        },
+        {
+            "term": 7,
+            "leaderId": 1,
+            "prevLogIndex": 10,
+            "entries": [{"term":7, "index":11, "command":"add"}],
+            "commitIndex": 0
+        }
+    ],
+    "Resps": [
+        {
+            "term": 4,
+            "success": false
+        },
+        {
+            "term": 4,
+            "success": false
+        },
+        {
+            "term": 4,
+            "success": false
+        },
+        {
+            "term": 4,
+            "success": false
+        },
+        {
+            "term": 4,
+            "success": false
+        },
+        {
+            "term": 4,
+            "success": false
         },
         {
             "term": 4,
@@ -81,32 +124,11 @@
         },
         {
             "term": 5,
-            "leaderId": 1,
-            "prevLogIndex": 5,
-            "entries": ["add"],
-            "commitIndex": 0
-        },
-        {
-            "term": 5,
             "success": true
         },
         {
             "term": 5,
-            "leaderId": 1,
-            "prevLogIndex": 6,
-            "entries": ["add"],
-            "commitIndex": 0
-        },
-        {
-            "term": 5,
             "success": true
-        },
-        {
-            "term": 6,
-            "leaderId": 1,
-            "prevLogIndex": 7,
-            "entries": ["add"],
-            "commitIndex": 0
         },
         {
             "term": 6,
@@ -114,32 +136,11 @@
         },
         {
             "term": 6,
-            "leaderId": 1,
-            "prevLogIndex": 8,
-            "entries": ["add"],
-            "commitIndex": 0
-        },
-        {
-            "term": 6,
             "success": true
         },
         {
             "term": 6,
-            "leaderId": 1,
-            "prevLogIndex": 9,
-            "entries": ["add"],
-            "commitIndex": 0
-        },
-        {
-            "term": 6,
             "success": true
-        },
-        {
-            "term": 7,
-            "leaderId": 1,
-            "prevLogIndex": 10,
-            "entries": ["add"],
-            "commitIndex": 0
         },
         {
             "term": 7,
