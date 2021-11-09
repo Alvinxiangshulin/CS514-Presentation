@@ -41,8 +41,10 @@ type Log struct {
 }
 
 type LeaderLog struct{
-	Requests AppendReqs
-	Resps Responses
+	//Requests AppendReqs
+	//Resps Responses
+	Rpcs []AppendEntriesRPC
+	Resps []AppendResp
 }
 
 

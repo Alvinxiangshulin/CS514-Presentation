@@ -26,6 +26,8 @@ func (this *Follower) CheckPrev(index, term int) bool {
 		return false
 	} else if index == 0 {
 		return len(this.Logs) == 0
+	} else if len(this.Logs) == 0 {
+		return true
 	}
 
 	log := this.Logs[index-1]
@@ -46,9 +48,9 @@ func (this *Follower) HandleAppendEntriesRPC(requests *AppendReqs, responses *Re
 			continue
 		}
 
-		if rpc.Term > this.CurrentTerm {
-			this.CurrentTerm = rpc.Term
-		}
+		//if rpc.Term > this.CurrentTerm {
+		//	this.CurrentTerm = rpc.Term
+		//}
 
 		if len(rpc.Entries) == 0 {
 			// TODO: reset timer
@@ -60,6 +62,10 @@ func (this *Follower) HandleAppendEntriesRPC(requests *AppendReqs, responses *Re
 		if !this.CheckPrev(rpc.PrevLogIndex, rpc.PrevLogTerm) {
 			responses.Resps = append(responses.Resps, AppendResp{this.CurrentTerm, false})
 			continue
+		}
+
+		if rpc.Term > this.CurrentTerm {
+			this.CurrentTerm = rpc.Term
 		}
 
 		// check for conflicts
@@ -100,10 +106,10 @@ func (this *Follower) HandleAppendEntriesRPC(requests *AppendReqs, responses *Re
 func main() {
 	//data, err := ParseAppendReqFromFile("test_input/test_follower_same.json")
 	data, err := ParseFroMissingLeaderFile("test_input/test_leader_input_missing_item.json")
-	reqs := data.Requests
-	resp := data.Resps
+	reqs := data.Rpcs
+	//resp := data.Resps
 	if err == nil {
-		PrintAppendReqs(&reqs)
+		//PrintAppendReqs(&reqs)
 	} else {
 		fmt.Println("err")
 	}
@@ -111,7 +117,9 @@ func main() {
 	responses := Responses{}
 	follower := Follower{}
 	follower.Init()
-	follower.HandleAppendEntriesRPC(&reqs, &responses)
+	req_arr := AppendReqs{}
+	req_arr.Rpcs = reqs
+	follower.HandleAppendEntriesRPC(&req_arr, &responses)
 
 	// open an output file
 	out_file, out_file_err := os.OpenFile("follower_out_missing_follower.json", os.O_CREATE|os.O_WRONLY, 0777)
@@ -120,7 +128,7 @@ func main() {
 	}
 
 	PrintResps(&responses)
-	PrintResps(&resp)
+	//PrintResps(&resp)
 
 	writter := bufio.NewWriter(out_file)
 	barr, json_err := json.MarshalIndent(responses, "", "    ")
