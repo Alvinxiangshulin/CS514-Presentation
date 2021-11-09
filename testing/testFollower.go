@@ -18,6 +18,10 @@ type Follower struct {
 func (this *Follower) Init() {
 	this.CurrentTerm = 0
 	this.Logs = make([]Log, 0)
+	this.Logs = append(this.Logs, Log{1, 1, "add"})
+	this.Logs = append(this.Logs, Log{1, 2, "add"})
+	this.Logs = append(this.Logs, Log{1, 3, "add"})
+	this.Logs = append(this.Logs, Log{2, 4, "add"})
 	this.Timeout = 100
 }
 
@@ -117,6 +121,7 @@ func main() {
 	responses := Responses{}
 	follower := Follower{}
 	follower.Init()
+	
 	req_arr := AppendReqs{}
 	req_arr.Rpcs = reqs
 	follower.HandleAppendEntriesRPC(&req_arr, &responses)
