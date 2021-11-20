@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"sort"
-	"strings"
 )
 
 type Follower struct {
@@ -22,6 +20,15 @@ func (this *Follower) Init() {
 	this.Logs = append(this.Logs, Log{1, 2, "add"})
 	this.Logs = append(this.Logs, Log{1, 3, "add"})
 	this.Logs = append(this.Logs, Log{4, 4, "add"})
+	this.Logs = append(this.Logs, Log{4, 5, "add"})
+	this.Logs = append(this.Logs, Log{5, 6, "add"})
+	this.Logs = append(this.Logs, Log{5, 7, "add"})
+	this.Logs = append(this.Logs, Log{6, 8, "add"})
+	this.Logs = append(this.Logs, Log{6, 9, "add"})
+	this.Logs = append(this.Logs, Log{6, 10, "add"})
+	this.Logs = append(this.Logs, Log{7, 11, "add"})
+	this.Logs = append(this.Logs, Log{7, 12, "add"})
+
 	this.Timeout = 100
 }
 
@@ -43,10 +50,17 @@ func (this *Follower) CheckPrev(index, term int) bool {
 	// return true
 }
 
+func (this *Follower) PrintLogs() {
+	for i := 0; i < len(this.Logs); i++ {
+		fmt.Println(this.Logs[i].ToStr())
+	}
+}
+
 func (this *Follower) HandleAppendEntriesRPC(requests *AppendReqs, responses *Responses) {
 	for _, rpc := range requests.Rpcs {
 
-		// validity check
+		// validity check ?
+
 		if rpc.Term < this.CurrentTerm {
 			responses.Resps = append(responses.Resps, AppendResp{this.CurrentTerm, false})
 			continue
@@ -74,34 +88,37 @@ func (this *Follower) HandleAppendEntriesRPC(requests *AppendReqs, responses *Re
 
 		// check for conflicts
 		// need to sort the entries first
-		sort.SliceStable(rpc.Entries, func(i, j int) bool {
-			log_i := rpc.Entries[i]
-			log_j := rpc.Entries[j]
+		// sort.SliceStable(rpc.Entries, func(i, j int) bool {
+		// 	log_i := rpc.Entries[i]
+		// 	log_j := rpc.Entries[j]
 
-			if log_i.Term < log_j.Term {
-				return true
-			} else if log_i.Term == log_j.Term {
-				return log_i.Index < log_j.Index
-			}
+		// 	if log_i.Term < log_j.Term {
+		// 		return true
+		// 	} else if log_i.Term == log_j.Term {
+		// 		return log_i.Index < log_j.Index
+		// 	}
 
-			return false
-		})
+		// 	return false
+		// })
 
-		conflict_index := -1
-		for i := rpc.PrevLogIndex; i < len(this.Logs); i++ {
-			if this.Logs[i].Term != rpc.Entries[0].Term || this.Logs[i].Index != rpc.Entries[0].Index || strings.Compare(rpc.Entries[0].Command, this.Logs[i].Command) != 0 {
-				conflict_index = i
-				break
-			}
-		}
+		// conflict_index := -1
+		// for i := rpc.PrevLogIndex; i < len(this.Logs); i++ {
+		// 	if this.Logs[i].Term != rpc.Entries[0].Term || this.Logs[i].Index != rpc.Entries[0].Index || strings.Compare(rpc.Entries[0].Command, this.Logs[i].Command) != 0 {
+		// 		conflict_index = i
+		// 		break
+		// 	}
+		// }
 
-		if conflict_index != -1 {
-			this.Logs = this.Logs[:conflict_index]
-		}
+		// if conflict_index != -1 {
+		// 	this.Logs = this.Logs[:conflict_index]
+		// }
 
 		// add all entries from RPC to follower's log
 		// deepcopy them to prevent some issues
 		// fmt.Println("Add new entry")
+		if rpc.PrevLogIndex < len(this.Logs)-1 {
+			this.Logs = this.Logs[:rpc.PrevLogIndex]
+		}
 		this.Logs = append(this.Logs, DeepCopyLogs(rpc.Entries)...)
 		responses.Resps = append(responses.Resps, AppendResp{this.CurrentTerm, true})
 	}
@@ -109,7 +126,7 @@ func (this *Follower) HandleAppendEntriesRPC(requests *AppendReqs, responses *Re
 
 func main() {
 	//data, err := ParseAppendReqFromFile("test_input/test_follower_same.json")
-	data, err := ParseFroMissingLeaderFile("test_input/test_leader_input_missing_item.json")
+	data, err := ParseRPCAndRespFromFile("test_input/test_extra.json")
 	reqs := data.Rpcs
 	//resp := data.Resps
 	if err == nil {
@@ -127,12 +144,13 @@ func main() {
 	follower.HandleAppendEntriesRPC(&req_arr, &responses)
 
 	// open an output file
-	out_file, out_file_err := os.OpenFile("follower_out_missing_follower.json", os.O_CREATE|os.O_WRONLY, 0777)
+	out_file, out_file_err := os.OpenFile("follower_out_extra.json", os.O_CREATE|os.O_WRONLY, 0777)
 	if out_file_err != nil {
 		panic(out_file_err)
 	}
 
 	PrintResps(&responses)
+	follower.PrintLogs()
 	//PrintResps(&resp)
 
 	writter := bufio.NewWriter(out_file)

@@ -40,13 +40,12 @@ type Log struct {
 	Command string
 }
 
-type LeaderLog struct{
+type LeaderLog struct {
 	//Requests AppendReqs
 	//Resps Responses
-	Rpcs []AppendEntriesRPC
+	Rpcs  []AppendEntriesRPC
 	Resps []AppendResp
 }
-
 
 func (this *Log) ToStr() string {
 	return fmt.Sprintf("[Term: %d, Index: %d, command: %s]", this.Term, this.Index, this.Command)
@@ -77,9 +76,8 @@ func ParseAppendReqFromFile(filename string) (AppendReqs, error) {
 	return requests, nil
 }
 
-
 //parse missing leader log
-func ParseFroMissingLeaderFile(filename string) (LeaderLog, error) {
+func ParseRPCAndRespFromFile(filename string) (LeaderLog, error) {
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return LeaderLog{}, err
