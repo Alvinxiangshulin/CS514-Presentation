@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -34,5 +35,6 @@ func main() {
 	server.Init()
 	http.HandleFunc("/hello", hello)
 	http.HandleFunc("/append-entry-rpc", handleAppendRPC)
-	http.ListenAndServe(":8090", nil)
+	port := os.Args[1]
+	http.ListenAndServe(":" + port, nil)
 }
