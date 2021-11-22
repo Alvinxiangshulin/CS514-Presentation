@@ -109,7 +109,6 @@ func AppendRpcTask(server *Actor) {
 			} else {
 				last_term = server.Logs[server.NextIndicies[peer_id]-2].Term
 			}
-			fmt.Println("A")
 			// build payload and send post request
 			append_rpc := AppendEntriesRPC{
 				Term:         server.Logs[server.NextIndicies[peer_id]-1].Term,
@@ -125,7 +124,6 @@ func AppendRpcTask(server *Actor) {
 				fmt.Println("marshal failed")
 			}
 			r, _ := http_client.Post("http://localhost:"+peer_id+"/append-entry-rpc", "application/json", bytes.NewBuffer(rpc_json))
-			fmt.Println("B")
 			var follower_resp AppendResp
 			err := json.NewDecoder(r.Body).Decode(&follower_resp)
 
@@ -149,7 +147,6 @@ func AppendRpcTask(server *Actor) {
 
 				// TODO: handle commit index here
 			}
-			fmt.Println("C")
 			r.Body.Close()
 			server.PrintLeaderState()
 		}
