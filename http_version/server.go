@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/go-co-op/gocron"
@@ -150,22 +148,30 @@ func AppendRpcTask(server *Actor) {
 			}
 
 			r.Body.Close()
+			server.PrintLeaderState()
 		}
 	}
+
 }
 
 func main() {
 
-	id := os.Args[1]
-	var rtype RoleType
-	if strings.Compare(os.Args[2], "leader") == 0 {
-		rtype = Leader
-	} else {
-		rtype = Follower
+	config_filename := os.Args[1]
+	// config_filename := "./actor_config/follower1.json"
+	server.InitFromConfigFile(config_filename)
+	if server.Role == Leader {
+		server.PrintLeaderState()
 	}
+	// id := os.Args[1]
+	// var rtype RoleType
+	// if strings.Compare(os.Args[2], "leader") == 0 {
+	// 	rtype = Leader
+	// } else {
+	// 	rtype = Follower
+	// }
 
-	num_peers, _ := strconv.Atoi(os.Args[3])
-	peers := os.Args[4:]
+	// num_peers, _ := strconv.Atoi(os.Args[3])
+	// peers := os.Args[4:]
 
 	// id := "8090"
 	// rtype := Follower
@@ -173,7 +179,7 @@ func main() {
 	// peers := make([]string, 1)
 	// peers[0] = "8091"
 
-	server.Init(id, rtype, num_peers, peers)
+	// server.Init(id, rtype, num_peers, peers)
 	http.HandleFunc("/append-entry-rpc", handleAppendRPC)
 	http.HandleFunc("/client-api", handleClientReq)
 	// port := os.Args[1]
@@ -185,5 +191,5 @@ func main() {
 	scheduler.Every(3).Seconds().Do(AppendRpcTask, &server)
 	scheduler.StartAsync()
 
-	http.ListenAndServe(":"+id, nil)
+	http.ListenAndServe(":"+server.ID, nil)
 }

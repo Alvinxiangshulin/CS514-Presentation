@@ -1,10 +1,26 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"strings"
 	"sync"
 )
+
+type ActorConfig struct {
+	NumPeers       int
+	CommitIdx      int
+	Peers          []string
+	CurrentTerm    int
+	Logs           []Log
+	Timeout        int
+	Role           string
+	ID             string
+	NextIndices    []int
+	LastLogIndices []int
+}
 
 type RoleType int
 
@@ -73,6 +89,59 @@ func (this *Actor) Init(id string, r RoleType, num_peers int, peers []string) {
 	}
 }
 
+func (this *Actor) InitFromConfigFile(filename string) {
+	data, err := ioutil.ReadFile(filename)
+	if err != nil {
+		panic(err)
+	}
+	payload := ActorConfig{}
+	err = json.Unmarshal(data, &payload)
+	if err != nil {
+		panic(err)
+	}
+
+	this.NumPeers = payload.NumPeers
+	this.CommitIdx = payload.CommitIdx
+	this.Peers = make([]string, len(payload.Peers))
+	this.ID = payload.ID
+
+	for i := 0; i < len(payload.Peers); i++ {
+		this.Peers[i] = payload.Peers[i]
+	}
+
+	this.CurrentTerm = payload.CurrentTerm
+	this.Logs = DeepCopyLogs(payload.Logs)
+	this.Timeout = payload.Timeout
+
+	if strings.Compare(payload.Role, "leader") == 0 {
+		this.Role = Leader
+	} else if strings.Compare(payload.Role, "candidate") == 0 {
+		this.Role = Candidate
+	} else {
+		this.Role = Follower
+	}
+
+	this.VotedFor = ""
+
+	this.NextIndicies = make(map[string]int)
+	this.LastLogIndicies = make(map[string]int)
+
+	// for k, v := range payload.NextIndicies {
+	// 	this.NextIndicies[k] = v
+	// }
+
+	// for k, v := range payload.LastLogIndicies {
+	// 	this.LastLogIndicies[k] = v
+	// }
+	for i := 0; i < len(payload.Peers); i++ {
+		this.NextIndicies[payload.Peers[i]] = payload.NextIndices[i]
+		this.LastLogIndicies[payload.Peers[i]] = payload.LastLogIndices[i]
+
+	}
+
+	this.AppendCounter = make([]int, len(this.Logs))
+}
+
 func (this *Actor) CheckPrev(index, term int) bool {
 
 	if this.Role != Follower {
@@ -89,6 +158,19 @@ func (this *Actor) CheckPrev(index, term int) bool {
 
 	log := this.Logs[index-1]
 	return log.Term == term
+
+}
+
+func (this *Actor) PrintLeaderState() {
+	fmt.Println("Leader maintained next indices:")
+	for k, v := range this.NextIndicies {
+		fmt.Printf("[%s, %d]\n", k, v)
+	}
+
+	fmt.Println("Leader maintained last log indices:")
+	for k, v := range this.LastLogIndicies {
+		fmt.Printf("[%s, %d]\n", k, v)
+	}
 
 }
 
