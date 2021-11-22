@@ -15,15 +15,29 @@ type AppendEntriesRPC struct {
 	CommitIndex  int
 }
 
+func (this *AppendEntriesRPC) Print() {
+	fmt.Printf("Term: %d, LID: %d, prevIdx: %d, prevLogTerm: %d, commitIdx: %d\n", this.Term, this.LeaderId, this.PrevLogIndex, this.PrevLogTerm, this.CommitIndex)
+}
+
 func (this *AppendEntriesRPC) PrintEntries() {
 	for i := range this.Entries {
 		fmt.Println(this.Entries[i].ToStr())
 	}
 }
 
+// yes, it only holds a string, but we need this for unmarshalling from json payload
+type ClientRequest struct {
+	Req string
+}
+
 type AppendResp struct {
 	Term    int
 	Success bool
+}
+
+type RespPayload struct {
+	Body   AppendResp
+	PeerID string
 }
 
 type Responses struct {
@@ -50,6 +64,9 @@ type LeaderLog struct {
 func (this *Log) ToStr() string {
 	return fmt.Sprintf("[Term: %d, Index: %d, command: %s]", this.Term, this.Index, this.Command)
 }
+
+// TODO: maybe we need move functions below into some file called utils
+//        don't make sense having them here
 
 func DeepCopyLogs(logs []Log) []Log {
 	result := make([]Log, len(logs))
