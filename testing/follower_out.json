@@ -1,0 +1,36 @@
+{
+    "Resps": [
+        {
+            "Term": 1,
+            "Success": true
+        },
+        {
+            "Term": 1,
+            "Success": true
+        },
+        {
+            "Term": 1,
+            "Success": true
+        },
+        {
+            "Term": 2,
+            "Success": true
+        },
+        {
+            "Term": 3,
+            "Success": true
+        },
+        {
+            "Term": 3,
+            "Success": true
+        },
+        {
+            "Term": 3,
+            "Success": true
+        },
+        {
+            "Term": 3,
+            "Success": true
+        }
+    ]
+}

@@ -1,0 +1,56 @@
+{
+    "Resps": [
+        {
+            "Term": 4,
+            "Success": false
+        },
+        {
+            "Term": 4,
+            "Success": false
+        },
+        {
+            "Term": 4,
+            "Success": false
+        },
+        {
+            "Term": 4,
+            "Success": false
+        },
+        {
+            "Term": 4,
+            "Success": false
+        },
+        {
+            "Term": 4,
+            "Success": false
+        },
+        {
+            "Term": 4,
+            "Success": true
+        },
+        {
+            "Term": 5,
+            "Success": true
+        },
+        {
+            "Term": 5,
+            "Success": true
+        },
+        {
+            "Term": 6,
+            "Success": true
+        },
+        {
+            "Term": 6,
+            "Success": true
+        },
+        {
+            "Term": 6,
+            "Success": true
+        },
+        {
+            "Term": 7,
+            "Success": true
+        }
+    ]
+}
