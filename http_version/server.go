@@ -14,6 +14,8 @@ import (
 // global variable that holds all information about the state machine
 //  see actor.go for implementation details
 var server Actor
+var counter int
+var lastHBtime time.Time
 
 // this function implements the follower behavior to AppendEntriesRPC
 func handleAppendRPC(w http.ResponseWriter, req *http.Request) {
@@ -39,7 +41,10 @@ func handleAppendRPC(w http.ResponseWriter, req *http.Request) {
 
 	w.Header().Set("Content-Type", "application-json")
 	w.WriteHeader(http.StatusCreated)
-
+	
+	if len(rpc.Entries) == 0{   //Heartbeat
+		lastHBtime := time.Now()
+	}
 	// advance state machine and get response
 	resp := server.HandleAppendEntriesRPC(&rpc)
 
@@ -77,6 +82,91 @@ func handleClientReq(w http.ResponseWriter, req *http.Request) {
 	}
 
 	w.Write(http_resp)
+}
+
+func handleVoteReq(w http.ResponseWriter, req *http.Request) {
+	fmt.Println("Trying to handle Vote Request from Follower side")
+
+	var vreq VoteReqRPC
+
+	err := json.NewDecoder(req.Body).Decode(&vreq)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	fmt.Printf("Follower received a Vote Request from server: %d\n", vreq.candidateID)
+
+	w.Header().Set("Content-Type", "application-json")
+	w.WriteHeader(http.StatusCreated)
+
+	lastVRtime = time.Now()
+	resp := server.HandleVoteReq(&vreq)
+	fmt.Printf("Vote result: %t\n", resp.voteGranted)
+	// return response to leader as json
+	json.NewEncoder(w).Encode(resp)
+
+	return
+}
+
+func FollowerTask(server *Actor){
+	server.mu.Lock()
+	defer server.mu.Unlock()
+
+	if time.Now() - lastHBtime > 4 && server.VotedTerm != server.CurrentTerm {
+		server.Role = Candidate
+		server.VotedTerm = server.CurrentTerm
+	}
+	if time.Now() - lastVRtime > 
+	return
+}
+
+func CandidateTask(server *Actor) {
+	// lock to avoid dirty data
+	server.mu.Lock()
+	defer server.mu.Unlock()
+	// only candidate confirm if it is selected
+	if server.Role != Candidate {
+	return
+	}
+
+	for i := 0; i < server.NumPeers; i++ {
+		peer_id := server.Peers[i]
+		req := VoteReqRPC{
+		candidateId  = server.ID
+		term         = server.CurrentTerm + 1
+		lastLogIndex = server.Logs[len(server.Logs) - 1].Index
+		lastLogTerm  = server.Logs[len(server.Logs) - 1].Term
+	}
+	}
+	req_json, er := json.Marshal(req)
+	r, _ := http_client.Post("http://localhost:"+peer_id+"/request-vote", "application/json", bytes.NewBuffer(req_json))
+	var vote_rsp VoteRsp
+	err := json.NewDecoder(r.Body).Decode(&vote_rsp)
+	if vote_rsp.voteGranted == true {
+		counter++
+		if counter > server.NumPeers / 2 {
+			break
+		}
+	}
+	r.body.Close()
+	}
+
+	http_client := &http.Client{Timeout: 10 * time.Second}
+	if counter > server.NumPeers / 2 {
+		for i := 0; i < server.NumPeers; i++ {
+			peer_id := server.Peers[i]
+			var heartbeat AppendEntriesRPC
+			heartbeat_json, er := json.Marshal(heartbeat)
+			if er != nil {
+				fmt.Println("marshal failed")
+			}
+			r, _ := http_client.Post("http://localhost:"+peer_id+"/", "application/json", bytes.NewBuffer(heartbeat_json))
+			server.Role = Leader
+			server.CurrentTerm ++
+			r.Body.Close()
+		}
+		counter = 1
+	}
 }
 
 // async task run by the scheduler for every fixed amount of seconds.
@@ -162,33 +252,29 @@ func main() {
 	if server.Role == Leader {
 		server.PrintLeaderState()
 	}
-	// id := os.Args[1]
-	// var rtype RoleType
-	// if strings.Compare(os.Args[2], "leader") == 0 {
-	// 	rtype = Leader
-	// } else {
-	// 	rtype = Follower
-	// }
-
-	// num_peers, _ := strconv.Atoi(os.Args[3])
-	// peers := os.Args[4:]
-
-	// id := "8090"
-	// rtype := Follower
-	// num_peers := 1
-	// peers := make([]string, 1)
-	// peers[0] = "8091"
-
+	counter = 1
 	// server.Init(id, rtype, num_peers, peers)
-	http.HandleFunc("/append-entry-rpc", handleAppendRPC)
-	http.HandleFunc("/client-api", handleClientReq)
 	// port := os.Args[1]
+
+	//client
+	http.HandleFunc("/client-api", handleClientReq)
+	http.HandleFunc("/client-api/disable_server", handleClientReq)
+	//candidate api
+	http.HandleFunc("/candidate/confirm_vote", handleVoteComfirm)
+	//leader api
+	http.HandleFunc("/leader/commit", handleClientReq)
+	http.HandleFunc("/client-api", handleClientReq)
+	//follower api
+	http.HandleFunc("/append-entry-rpc", handleAppendRPC)
+	http.HandleFunc("/request-vote", handleVoteReq)
 
 	// use scheduler for sending append rpcs
 	scheduler := gocron.NewScheduler(time.UTC)
 
 	// change the number here to modify the interval
 	scheduler.Every(3).Seconds().Do(AppendRpcTask, &server)
+	scheduler.Every(3).Seconds().Do(FollowerTask, &server)
+	scheduler.Every(3).Seconds().Do(CandidateTask, &server)
 	scheduler.StartAsync()
 
 	http.ListenAndServe(":"+server.ID, nil)

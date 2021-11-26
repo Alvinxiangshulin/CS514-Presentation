@@ -12,12 +12,12 @@ import (
 type ActorConfig struct {
 	NumPeers       int
 	CommitIdx      int
-	Peers          []string
+	Servers        []string //all servers' port number
 	CurrentTerm    int
 	Logs           []Log
 	Timeout        int
 	Role           string
-	ID             string
+	ID             string // current server's index in Servers []
 	NextIndices    []int
 	LastLogIndices []int
 }
@@ -59,8 +59,8 @@ type Actor struct {
 	Role    RoleType
 
 	// port number of the actor, assuming this is unique in system
-	ID       string
-	VotedFor string
+	ID        string
+	VotedTerm int
 }
 
 func (this *Actor) Init(id string, r RoleType, num_peers int, peers []string) {
@@ -262,4 +262,25 @@ func (this *Actor) ReceiveClientRequest(req string) {
 
 	new_log := Log{this.CurrentTerm, len(this.Logs) + 1, req}
 	this.Logs = append(this.Logs, new_log)
+}
+
+func (this *Actor) HandleVoteReq(rpc *VoteReqRPC) VoteRsp {
+	this.mu.Lock()
+	defer this.mu.Unlock()
+	this.VotedTerm = rpc.term
+	if this.Role != Candidate {
+		panic(errors.New("tried to response to Vote Request as a non-Candidate"))
+	}
+
+	if this.CurrentTerm > rpc.term {
+		return VoteRsp{this.CurrentTerm, false}
+	}
+
+	if len(this.Logs) <= rpc.lastLogIndex+1 {
+		this.VotedFor = rpc.candidateID
+		return VoteRsp{this.VotedTerm, true}
+	} else {
+		return VoteRsp{this.VotedTerm, false}
+	}
+
 }

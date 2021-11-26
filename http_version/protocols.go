@@ -8,21 +8,23 @@ import (
 
 type AppendEntriesRPC struct {
 	Term         int
-	LeaderId     int
+	LeaderId     string
 	PrevLogIndex int
 	PrevLogTerm  int
 	Entries      []Log
 	CommitIndex  int
 }
 
-func (this *AppendEntriesRPC) Print() {
-	fmt.Printf("Term: %d, LID: %d, prevIdx: %d, prevLogTerm: %d, commitIdx: %d\n", this.Term, this.LeaderId, this.PrevLogIndex, this.PrevLogTerm, this.CommitIndex)
+type VoteReqRPC struct {
+	candidateID  string
+	term         int
+	lastLogIndex int
+	lastLogTerm  int
 }
 
-func (this *AppendEntriesRPC) PrintEntries() {
-	for i := range this.Entries {
-		fmt.Println(this.Entries[i].ToStr())
-	}
+type VoteRsp struct {
+	term        int
+	voteGranted bool
 }
 
 // yes, it only holds a string, but we need this for unmarshalling from json payload
@@ -59,6 +61,16 @@ type LeaderLog struct {
 	//Resps Responses
 	Rpcs  []AppendEntriesRPC
 	Resps []AppendResp
+}
+
+func (this *AppendEntriesRPC) Print() {
+	fmt.Printf("Term: %d, LID: %d, prevIdx: %d, prevLogTerm: %d, commitIdx: %d\n", this.Term, this.LeaderId, this.PrevLogIndex, this.PrevLogTerm, this.CommitIndex)
+}
+
+func (this *AppendEntriesRPC) PrintEntries() {
+	for i := range this.Entries {
+		fmt.Println(this.Entries[i].ToStr())
+	}
 }
 
 func (this *Log) ToStr() string {
