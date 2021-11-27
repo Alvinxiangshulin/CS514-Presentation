@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"strings"
 	"sync"
+	"time"
 )
 
 type ActorConfig struct {
@@ -61,6 +62,10 @@ type Actor struct {
 	// port number of the actor, assuming this is unique in system
 	ID        string
 	VotedTerm int
+
+	counter    int
+	lastHBtime time.Time
+	lastVRtime time.Time
 }
 
 func (this *Actor) Init(id string, r RoleType, num_peers int, peers []string) {
@@ -198,7 +203,6 @@ func (this *Actor) HandleAppendEntriesRPC(rpc *AppendEntriesRPC) AppendResp {
 
 	if len(rpc.Entries) == 0 {
 		// TODO: reset heartbeat timer
-
 		fmt.Println("heartbeat received")
 		return AppendResp{-1, false}
 	}
@@ -212,6 +216,7 @@ func (this *Actor) HandleAppendEntriesRPC(rpc *AppendEntriesRPC) AppendResp {
 	}
 
 	if rpc.Term >= this.CurrentTerm {
+		this.lastHBtime = time.Now()
 		this.CurrentTerm = rpc.Term
 		this.VotedTerm = 0
 	}
@@ -268,13 +273,22 @@ func (this *Actor) ReceiveClientRequest(req string) {
 func (this *Actor) HandleVoteReq(rpc *VoteReqRPC) VoteRsp {
 	this.mu.Lock()
 	defer this.mu.Unlock()
-	this.VotedTerm = rpc.voteterm
+
 	if this.Role != Candidate {
 		panic(errors.New("tried to response to Vote Request as a non-Candidate"))
 	}
 
+	if this.VotedTerm < rpc.voteterm {
+		this.VotedTerm = rpc.voteterm
+		this.lastVRtime = time.Now()
+	} else {
+		return VoteRsp{this.VotedTerm, false}
+	}
+
 	if this.CurrentTerm > rpc.term {
-		return VoteRsp{this.CurrentTerm, false}
+		return VoteRsp{this.VotedTerm, false}
+	} else {
+		this.lastVRtime = time.Now()
 	}
 
 	if len(this.Logs) <= rpc.lastLogIndex+1 {

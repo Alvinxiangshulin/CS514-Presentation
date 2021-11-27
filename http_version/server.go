@@ -14,9 +14,7 @@ import (
 // global variable that holds all information about the state machine
 //  see actor.go for implementation details
 var server Actor
-var counter int
-var lastHBtime time.Time
-var lastVRtime time.Time
+
 
 const HB_EXPIRED_TIME = 4
 const VTERM_EXPIRED_TIME = 4
@@ -103,7 +101,7 @@ func handleVoteReq(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application-json")
 	w.WriteHeader(http.StatusCreated)
 
-	lastVRtime = time.Now()
+	
 	resp := server.HandleVoteReq(&vreq)
 	fmt.Printf("Vote result: %t\n", resp.voteGranted)
 	// return response to leader as json
@@ -138,25 +136,29 @@ func CandidateTask(server *Actor) {
 	for i := 0; i < server.NumPeers; i++ {
 		peer_id := server.Peers[i]
 		req := VoteReqRPC{
-		candidateID  = server.ID
-		term         = server.CurrentTerm 
-		voteterm     = server.VotedTerm + 1
-		lastLogIndex = server.Logs[len(server.Logs) - 1].Index
-		lastLogTerm  = server.Logs[len(server.Logs) - 1].Term
-	}
+		candidateID:   server.ID,
+		term:          server.CurrentTerm, 
+		voteterm:      server.VotedTerm + 1,
+		lastLogIndex:  server.Logs[len(server.Logs) - 1].Index,
+		lastLogTerm:   server.Logs[len(server.Logs) - 1].Term}
 	}
 	req_json, er := json.Marshal(req)
 	r, _ := http_client.Post("http://localhost:"+peer_id+"/request-vote", "application/json", bytes.NewBuffer(req_json))
 	var vote_rsp VoteRsp
 	err := json.NewDecoder(r.Body).Decode(&vote_rsp)
+	
 	if vote_rsp.voteGranted == true {
 		counter++
 		if counter > server.NumPeers / 2 {
 			break
 		}
+	} else {
+		if vote_rsp.term >= server.VotedTerm{   // my voteterm is not up-to-date
+			break
+		}
 	}
 	r.body.Close()
-	}
+	
 
 	http_client := &http.Client{Timeout: 10 * time.Second}
 	if counter > server.NumPeers / 2 {
@@ -184,7 +186,7 @@ func CandidateTask(server *Actor) {
 //  The interval can be adjusted in main function
 // This task implements the process of leader appending logs to its
 //  followers
-func AppendRpcTask(server *Actor) {
+func LeaderTask(server *Actor) {
 
 	// lock to avoid dirty data
 	server.mu.Lock()
@@ -281,7 +283,7 @@ func main() {
 	scheduler := gocron.NewScheduler(time.UTC)
 
 	// change the number here to modify the interval
-	scheduler.Every(3).Seconds().Do(AppendRpcTask, &server)
+	scheduler.Every(3).Seconds().Do(LeaderTask, &server)
 	scheduler.Every(3).Seconds().Do(FollowerTask, &server)
 	scheduler.Every(3).Seconds().Do(CandidateTask, &server)
 	scheduler.StartAsync()
