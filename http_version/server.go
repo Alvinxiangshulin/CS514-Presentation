@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"os"
 	"time"
-
+	"strconv"
 	"github.com/go-co-op/gocron"
 )
 
@@ -262,10 +262,29 @@ func LeaderTask(server *Actor) {
 }
 
 func main() {
-
+	// initialization
+	// read from input: id string, num_peers int, peers []string
+	id := os.Args[1]
+	num_peers_string := os.Args[2]
+	num_peers, err := strconv.Atoi(num_peers_string)
+    if err != nil {
+        // handle error
+        fmt.Println(err)
+        os.Exit(2)
+    }
+	peers := os.Args[3:]
+	if len(peers) != num_peers {
+		fmt.Println("Please correct inputs: id; num_peers; peer ports")
+	}
+	server.Init(id, num_peers, peers)
+	
+	// initialize from files
+	/*
 	config_filename := os.Args[1]
 	// config_filename := "./actor_config/follower1.json"
 	server.InitFromConfigFile(config_filename)
+	*/
+	
 	if server.Role == Leader {
 		server.PrintLeaderState()
 	}

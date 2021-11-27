@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"math/rand"
 )
 
 type ActorConfig struct {
@@ -68,10 +69,10 @@ type Actor struct {
 	lastVRtime time.Time
 }
 
-func (this *Actor) Init(id string, r RoleType, num_peers int, peers []string) {
+func (this *Actor) Init(id string, num_peers int, peers []string) {
 	// TODO: init peers, logs, appendcounter
 	this.CurrentTerm = 1
-	this.Role = r
+	this.Role = Follower
 	this.NumPeers = num_peers
 	this.NextIndicies = make(map[string]int)
 	this.LastLogIndicies = make(map[string]int)
@@ -86,7 +87,9 @@ func (this *Actor) Init(id string, r RoleType, num_peers int, peers []string) {
 	}
 
 	this.CommitIdx = 0
-	this.Timeout = 100
+
+	var min, max int = 2, 6 
+	this.Timeout = rand.Intn(max-min) + min
 
 	this.Peers = make([]string, len(peers))
 	for i := 0; i < len(peers); i++ {
