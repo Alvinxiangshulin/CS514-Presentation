@@ -268,8 +268,8 @@ func main() {
 	// port := os.Args[1]
 
 	//client
-	http.HandleFunc("/client-api", handleClientReq)
-	http.HandleFunc("/client-api/disable_server", handleClientReq)
+	//http.HandleFunc("/client-api", handleClientReq)
+	//http.HandleFunc("/client-api/disable_server", handleClientReq)
 	//leader api
 	//http.HandleFunc("/leader/commit", handleClientReq)
 	http.HandleFunc("/client-api", handleClientReq)
