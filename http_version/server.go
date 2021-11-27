@@ -15,7 +15,6 @@ import (
 //  see actor.go for implementation details
 var server Actor
 
-
 const HB_EXPIRED_TIME = 4
 const VTERM_EXPIRED_TIME = 4
 
@@ -43,10 +42,7 @@ func handleAppendRPC(w http.ResponseWriter, req *http.Request) {
 
 	w.Header().Set("Content-Type", "application-json")
 	w.WriteHeader(http.StatusCreated)
-	
-	if len(rpc.Entries) == 0{   //Heartbeat
-		lastHBtime := time.Now()
-	}
+
 	// advance state machine and get response
 	resp := server.HandleAppendEntriesRPC(&rpc)
 
@@ -96,12 +92,11 @@ func handleVoteReq(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	fmt.Printf("Follower received a Vote Request from server: %d\n", vreq.candidateID)
+	fmt.Printf("Follower received a Vote Request from server: %s\n", vreq.candidateID)
 
 	w.Header().Set("Content-Type", "application-json")
 	w.WriteHeader(http.StatusCreated)
 
-	
 	resp := server.HandleVoteReq(&vreq)
 	fmt.Printf("Vote result: %t\n", resp.voteGranted)
 	// return response to leader as json
@@ -110,17 +105,19 @@ func handleVoteReq(w http.ResponseWriter, req *http.Request) {
 	return
 }
 
-func FollowerTask(server *Actor){
+func FollowerTask(server *Actor) {
 	server.mu.Lock()
 	defer server.mu.Unlock()
 	// Transition from follower to candidate (if not heartbeat received and no vote term started at current term)
-	if time.Now() - lastHBtime > HB_EXPIRED_TIME {
-		if server.VotedTerm == 0 || time.Now() - lastVRtime > VTERM_EXPIRED_TIME{
+
+	HBtimeout := time.Since(server.lastHBtime).Seconds()
+	VRtimeout := time.Since(server.lastVRtime).Seconds()
+	if HBtimeout > HB_EXPIRED_TIME {
+		if server.VotedTerm == 0 || VRtimeout > VTERM_EXPIRED_TIME {
 			server.Role = Candidate
-			server.VotedTerm ++ 
+			server.VotedTerm++
 		}
-	} 
-	
+	}
 	return
 }
 
@@ -130,38 +127,46 @@ func CandidateTask(server *Actor) {
 	defer server.mu.Unlock()
 	// only candidate confirm if it is selected
 	if server.Role != Candidate {
-	return
+		return
 	}
+	http_client := &http.Client{Timeout: 10 * time.Second}
 
 	for i := 0; i < server.NumPeers; i++ {
 		peer_id := server.Peers[i]
 		req := VoteReqRPC{
-		candidateID:   server.ID,
-		term:          server.CurrentTerm, 
-		voteterm:      server.VotedTerm + 1,
-		lastLogIndex:  server.Logs[len(server.Logs) - 1].Index,
-		lastLogTerm:   server.Logs[len(server.Logs) - 1].Term}
-	}
-	req_json, er := json.Marshal(req)
-	r, _ := http_client.Post("http://localhost:"+peer_id+"/request-vote", "application/json", bytes.NewBuffer(req_json))
-	var vote_rsp VoteRsp
-	err := json.NewDecoder(r.Body).Decode(&vote_rsp)
-	
-	if vote_rsp.voteGranted == true {
-		counter++
-		if counter > server.NumPeers / 2 {
-			break
-		}
-	} else {
-		if vote_rsp.term >= server.VotedTerm{   // my voteterm is not up-to-date
-			break
-		}
-	}
-	r.body.Close()
-	
+			candidateID:  server.ID,
+			term:         server.CurrentTerm,
+			voteterm:     server.VotedTerm + 1,
+			lastLogIndex: server.Logs[len(server.Logs)-1].Index,
+			lastLogTerm:  server.Logs[len(server.Logs)-1].Term}
 
-	http_client := &http.Client{Timeout: 10 * time.Second}
-	if counter > server.NumPeers / 2 {
+		req_json, er := json.Marshal(req)
+		if er != nil {
+			fmt.Println("marshal failed")
+		}
+		r, _ := http_client.Post("http://localhost:"+peer_id+"/request-vote", "application/json", bytes.NewBuffer(req_json))
+
+		var vote_rsp VoteRsp
+		err := json.NewDecoder(r.Body).Decode(&vote_rsp)
+
+		if err != nil {
+			fmt.Println("json parse error for response body")
+			return
+		}
+		if vote_rsp.voteGranted == true {
+			server.counter++
+			if server.counter > server.NumPeers/2 {
+				break
+			}
+		} else {
+			if vote_rsp.term >= server.VotedTerm { // my voteterm is not up-to-date
+				break
+			}
+		}
+		r.Body.Close()
+	}
+
+	if server.counter > server.NumPeers/2 {
 		for i := 0; i < server.NumPeers; i++ {
 			peer_id := server.Peers[i]
 			var heartbeat AppendEntriesRPC
@@ -171,13 +176,12 @@ func CandidateTask(server *Actor) {
 			}
 			r, _ := http_client.Post("http://localhost:"+peer_id+"/", "application/json", bytes.NewBuffer(heartbeat_json))
 			server.Role = Leader
-			server.CurrentTerm ++
+			server.CurrentTerm++
 			server.VotedTerm = 0
 			r.Body.Close()
 		}
-		counter = 1
-	}
-	else {
+		server.counter = 1
+	} else {
 		server.Role = Follower
 	}
 }
@@ -215,7 +219,7 @@ func LeaderTask(server *Actor) {
 			// build payload and send post request
 			append_rpc := AppendEntriesRPC{
 				Term:         server.Logs[server.NextIndicies[peer_id]-1].Term,
-				LeaderId:     1,
+				LeaderId:     server.ID,
 				PrevLogIndex: server.NextIndicies[peer_id] - 1,
 				PrevLogTerm:  last_term,
 				Entries:      []Log{server.Logs[server.NextIndicies[peer_id]-1]},
@@ -265,7 +269,7 @@ func main() {
 	if server.Role == Leader {
 		server.PrintLeaderState()
 	}
-	counter = 1
+	server.counter = 1
 	// server.Init(id, rtype, num_peers, peers)
 	// port := os.Args[1]
 
