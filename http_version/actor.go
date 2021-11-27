@@ -12,7 +12,7 @@ import (
 type ActorConfig struct {
 	NumPeers       int
 	CommitIdx      int
-	Servers        []string //all servers' port number
+	Peers          []string //all servers' port number
 	CurrentTerm    int
 	Logs           []Log
 	Timeout        int
@@ -73,7 +73,7 @@ func (this *Actor) Init(id string, r RoleType, num_peers int, peers []string) {
 	this.AppendCounter = make([]int, 0)
 
 	this.Logs = make([]Log, 0)
-	this.VotedFor = ""
+	this.VotedTerm = 0
 
 	for i := 0; i < this.NumPeers; i++ {
 		this.NextIndicies[peers[i]] = 1
@@ -121,7 +121,7 @@ func (this *Actor) InitFromConfigFile(filename string) {
 		this.Role = Follower
 	}
 
-	this.VotedFor = ""
+	this.VotedTerm = -1
 
 	this.NextIndicies = make(map[string]int)
 	this.LastLogIndicies = make(map[string]int)
@@ -211,8 +211,9 @@ func (this *Actor) HandleAppendEntriesRPC(rpc *AppendEntriesRPC) AppendResp {
 		return AppendResp{this.CurrentTerm, false}
 	}
 
-	if rpc.Term > this.CurrentTerm {
+	if rpc.Term >= this.CurrentTerm {
 		this.CurrentTerm = rpc.Term
+		this.VotedTerm = 0
 	}
 
 	if rpc.PrevLogIndex < len(this.Logs)-1 {
@@ -267,7 +268,7 @@ func (this *Actor) ReceiveClientRequest(req string) {
 func (this *Actor) HandleVoteReq(rpc *VoteReqRPC) VoteRsp {
 	this.mu.Lock()
 	defer this.mu.Unlock()
-	this.VotedTerm = rpc.term
+	this.VotedTerm = rpc.voteterm
 	if this.Role != Candidate {
 		panic(errors.New("tried to response to Vote Request as a non-Candidate"))
 	}
@@ -277,7 +278,6 @@ func (this *Actor) HandleVoteReq(rpc *VoteReqRPC) VoteRsp {
 	}
 
 	if len(this.Logs) <= rpc.lastLogIndex+1 {
-		this.VotedFor = rpc.candidateID
 		return VoteRsp{this.VotedTerm, true}
 	} else {
 		return VoteRsp{this.VotedTerm, false}

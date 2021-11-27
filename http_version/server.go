@@ -16,6 +16,10 @@ import (
 var server Actor
 var counter int
 var lastHBtime time.Time
+var lastVRtime time.Time
+
+const HB_EXPIRED_TIME = 4
+const VTERM_EXPIRED_TIME = 4
 
 // this function implements the follower behavior to AppendEntriesRPC
 func handleAppendRPC(w http.ResponseWriter, req *http.Request) {
@@ -111,12 +115,14 @@ func handleVoteReq(w http.ResponseWriter, req *http.Request) {
 func FollowerTask(server *Actor){
 	server.mu.Lock()
 	defer server.mu.Unlock()
-
-	if time.Now() - lastHBtime > 4 && server.VotedTerm != server.CurrentTerm {
-		server.Role = Candidate
-		server.VotedTerm = server.CurrentTerm
-	}
-	if time.Now() - lastVRtime > 
+	// Transition from follower to candidate (if not heartbeat received and no vote term started at current term)
+	if time.Now() - lastHBtime > HB_EXPIRED_TIME {
+		if server.VotedTerm == 0 || time.Now() - lastVRtime > VTERM_EXPIRED_TIME{
+			server.Role = Candidate
+			server.VotedTerm ++ 
+		}
+	} 
+	
 	return
 }
 
@@ -132,8 +138,9 @@ func CandidateTask(server *Actor) {
 	for i := 0; i < server.NumPeers; i++ {
 		peer_id := server.Peers[i]
 		req := VoteReqRPC{
-		candidateId  = server.ID
-		term         = server.CurrentTerm + 1
+		candidateID  = server.ID
+		term         = server.CurrentTerm 
+		voteterm     = server.VotedTerm + 1
 		lastLogIndex = server.Logs[len(server.Logs) - 1].Index
 		lastLogTerm  = server.Logs[len(server.Logs) - 1].Term
 	}
@@ -163,9 +170,13 @@ func CandidateTask(server *Actor) {
 			r, _ := http_client.Post("http://localhost:"+peer_id+"/", "application/json", bytes.NewBuffer(heartbeat_json))
 			server.Role = Leader
 			server.CurrentTerm ++
+			server.VotedTerm = 0
 			r.Body.Close()
 		}
 		counter = 1
+	}
+	else {
+		server.Role = Follower
 	}
 }
 
@@ -259,10 +270,8 @@ func main() {
 	//client
 	http.HandleFunc("/client-api", handleClientReq)
 	http.HandleFunc("/client-api/disable_server", handleClientReq)
-	//candidate api
-	http.HandleFunc("/candidate/confirm_vote", handleVoteComfirm)
 	//leader api
-	http.HandleFunc("/leader/commit", handleClientReq)
+	//http.HandleFunc("/leader/commit", handleClientReq)
 	http.HandleFunc("/client-api", handleClientReq)
 	//follower api
 	http.HandleFunc("/append-entry-rpc", handleAppendRPC)

@@ -18,6 +18,7 @@ type AppendEntriesRPC struct {
 type VoteReqRPC struct {
 	candidateID  string
 	term         int
+	voteterm     int
 	lastLogIndex int
 	lastLogTerm  int
 }
