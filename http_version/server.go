@@ -275,6 +275,7 @@ func main() {
 	peers := os.Args[3:]
 	if len(peers) != num_peers {
 		fmt.Println("Please correct inputs: id; num_peers; peer ports")
+		os.Exit(1)
 	}
 	server.Init(id, num_peers, peers)
 	
