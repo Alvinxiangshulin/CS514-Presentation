@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"time"
@@ -115,7 +116,7 @@ func FollowerTask(server *Actor) {
 
 	HBtimeout := time.Since(server.lastHBtime).Seconds()
 	VRtimeout := time.Since(server.lastVRtime).Seconds()
-	if HBtimeout > HB_EXPIRED_TIME {
+	if HBtimeout > float64(server.Timeout) {
 		if server.VotedTerm == 0 || VRtimeout > VTERM_EXPIRED_TIME {
 
 			log.Printf("Server ID %s: Follower -> Candidate\n", server.ID)
@@ -212,6 +213,8 @@ func CandidateTask(server *Actor) {
 
 		log.Printf("Server ID %s: Candidate -> Follower\n", server.ID)
 		server.Role = Follower
+		server.Timeout = rand.Intn(15-3) + 3
+		log.Printf("Server %s: new timeout value: %d\n", server.ID, server.Timeout)
 	}
 }
 
