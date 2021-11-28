@@ -25,7 +25,7 @@
             "Command": "Term 4 Idx 4"
         }
     ],
-    "Timeout": 100,
+    "Timeout": 5,
     "Role": "follower",
     "ID": "8091",
     "nextindices": [1],

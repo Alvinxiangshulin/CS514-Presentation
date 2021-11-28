@@ -5,10 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"strings"
 	"sync"
 	"time"
-	"math/rand"
 )
 
 type ActorConfig struct {
@@ -88,7 +88,7 @@ func (this *Actor) Init(id string, num_peers int, peers []string) {
 
 	this.CommitIdx = 0
 
-	var min, max int = 2, 6 
+	var min, max int = 2, 6
 	this.Timeout = rand.Intn(max-min) + min
 
 	this.Peers = make([]string, len(peers))
@@ -148,6 +148,10 @@ func (this *Actor) InitFromConfigFile(filename string) {
 	}
 
 	this.AppendCounter = make([]int, len(this.Logs))
+
+	this.lastHBtime = time.Now()
+	this.lastVRtime = time.Now()
+	this.counter = 1
 }
 
 func (this *Actor) CheckPrev(index, term int) bool {
@@ -281,20 +285,20 @@ func (this *Actor) HandleVoteReq(rpc *VoteReqRPC) VoteRsp {
 		panic(errors.New("tried to response to Vote Request as a non-Candidate"))
 	}
 
-	if this.VotedTerm < rpc.voteterm {
-		this.VotedTerm = rpc.voteterm
+	if this.VotedTerm < rpc.Voteterm {
+		this.VotedTerm = rpc.Voteterm
 		this.lastVRtime = time.Now()
 	} else {
 		return VoteRsp{this.VotedTerm, false}
 	}
 
-	if this.CurrentTerm > rpc.term {
+	if this.CurrentTerm > rpc.Term {
 		return VoteRsp{this.VotedTerm, false}
 	} else {
 		this.lastVRtime = time.Now()
 	}
 
-	if len(this.Logs) <= rpc.lastLogIndex+1 {
+	if len(this.Logs) <= rpc.LastLogIndex+1 {
 		return VoteRsp{this.VotedTerm, true}
 	} else {
 		return VoteRsp{this.VotedTerm, false}

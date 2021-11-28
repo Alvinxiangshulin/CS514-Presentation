@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"time"
-	"strconv"
+
 	"github.com/go-co-op/gocron"
 )
 
@@ -92,17 +93,15 @@ func handleVoteReq(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	fmt.Printf("Follower received a Vote Request from server: %s\n", vreq.candidateID)
+	log.Printf("Server ID %s: Received Vote Request from server: %s\n", server.ID, vreq.CandidateID)
 
 	w.Header().Set("Content-Type", "application-json")
 	w.WriteHeader(http.StatusCreated)
 
 	resp := server.HandleVoteReq(&vreq)
-	fmt.Printf("Vote result: %t\n", resp.voteGranted)
+	log.Printf("Server ID %s: Vote result: %t\n", server.ID, resp.VoteGranted)
 	// return response to leader as json
 	json.NewEncoder(w).Encode(resp)
-
-	return
 }
 
 func FollowerTask(server *Actor) {
@@ -110,15 +109,20 @@ func FollowerTask(server *Actor) {
 	defer server.mu.Unlock()
 	// Transition from follower to candidate (if not heartbeat received and no vote term started at current term)
 
+	if server.Role != Follower {
+		return
+	}
+
 	HBtimeout := time.Since(server.lastHBtime).Seconds()
 	VRtimeout := time.Since(server.lastVRtime).Seconds()
 	if HBtimeout > HB_EXPIRED_TIME {
 		if server.VotedTerm == 0 || VRtimeout > VTERM_EXPIRED_TIME {
+
+			log.Printf("Server ID %s: Follower -> Candidate\n", server.ID)
 			server.Role = Candidate
 			server.VotedTerm++
 		}
 	}
-	return
 }
 
 func CandidateTask(server *Actor) {
@@ -129,61 +133,123 @@ func CandidateTask(server *Actor) {
 	if server.Role != Candidate {
 		return
 	}
-	http_client := &http.Client{Timeout: 10 * time.Second}
+	http_client := &http.Client{Timeout: 1 * time.Second}
 
 	for i := 0; i < server.NumPeers; i++ {
 		peer_id := server.Peers[i]
 		req := VoteReqRPC{
-			candidateID:  server.ID,
-			term:         server.CurrentTerm,
-			voteterm:     server.VotedTerm + 1,
-			lastLogIndex: server.Logs[len(server.Logs)-1].Index,
-			lastLogTerm:  server.Logs[len(server.Logs)-1].Term}
+			CandidateID:  server.ID,
+			Term:         server.CurrentTerm,
+			Voteterm:     server.VotedTerm + 1,
+			LastLogIndex: server.Logs[len(server.Logs)-1].Index,
+			LastLogTerm:  server.Logs[len(server.Logs)-1].Term}
 
 		req_json, er := json.Marshal(req)
 		if er != nil {
 			fmt.Println("marshal failed")
 		}
-		r, _ := http_client.Post("http://localhost:"+peer_id+"/request-vote", "application/json", bytes.NewBuffer(req_json))
+		r, http_err := http_client.Post("http://localhost:"+peer_id+"/request-vote", "application/json", bytes.NewBuffer(req_json))
 
-		var vote_rsp VoteRsp
-		err := json.NewDecoder(r.Body).Decode(&vote_rsp)
+		if http_err == nil {
+			var vote_rsp VoteRsp
+			err := json.NewDecoder(r.Body).Decode(&vote_rsp)
 
-		if err != nil {
-			fmt.Println("json parse error for response body")
-			return
-		}
-		if vote_rsp.voteGranted == true {
-			server.counter++
-			if server.counter > server.NumPeers/2 {
-				break
+			if err != nil {
+				log.Println("json parse error for response body")
+				return
 			}
-		} else {
-			if vote_rsp.term >= server.VotedTerm { // my voteterm is not up-to-date
-				break
+			if vote_rsp.VoteGranted == true {
+				server.counter++
+				if server.counter > server.NumPeers/2 {
+					break
+				}
+			} else {
+				if vote_rsp.Term >= server.VotedTerm { // my voteterm is not up-to-date
+					break
+				}
 			}
-		}
-		r.Body.Close()
-	}
-
-	if server.counter > server.NumPeers/2 {
-		for i := 0; i < server.NumPeers; i++ {
-			peer_id := server.Peers[i]
-			var heartbeat AppendEntriesRPC
-			heartbeat_json, er := json.Marshal(heartbeat)
-			if er != nil {
-				fmt.Println("marshal failed")
-			}
-			r, _ := http_client.Post("http://localhost:"+peer_id+"/", "application/json", bytes.NewBuffer(heartbeat_json))
-			server.Role = Leader
-			server.CurrentTerm++
-			server.VotedTerm = 0
 			r.Body.Close()
 		}
-		server.counter = 1
+	}
+
+	// now the candidate becomes leader, need to send out heartbeat messages
+	if server.counter > server.NumPeers/2 {
+
+		// since it is now elected as leader, need to increase term by 1
+		server.Role = Leader
+		server.CurrentTerm++
+		server.VotedTerm = 0
+
+		log.Printf("Server ID %s is elected leader of term %d\n", server.ID, server.CurrentTerm)
+
+		/*
+			for i := 0; i < server.NumPeers; i++ {
+				peer_id := server.Peers[i]
+				// var heartbeat AppendEntriesRPC
+
+				heartbeat := AppendEntriesRPC{
+					Term:         server.CurrentTerm,
+					LeaderId:     server.ID,
+					PrevLogIndex: server.NextIndicies[peer_id] - 1,
+					PrevLogTerm:  server.CurrentTerm - 1,
+					Entries:      []Log{},
+					CommitIndex:  server.CommitIdx}
+
+				heartbeat_json, er := json.Marshal(heartbeat)
+				if er != nil {
+					log.Println("marshal failed")
+				}
+				r, http_err := http_client.Post("http://localhost:"+peer_id+"/append-entry-rpc", "application/json", bytes.NewBuffer(heartbeat_json))
+
+				if http_err != nil && r != nil && r.Body != nil {
+					r.Body.Close()
+				}
+			}
+			server.counter = 1
+		*/
 	} else {
+
+		log.Printf("Server ID %s: Candidate -> Follower\n", server.ID)
 		server.Role = Follower
 	}
+}
+
+func HeartBeatTask(server *Actor) {
+	server.mu.Lock()
+	defer server.mu.Unlock()
+
+	http_client := &http.Client{Timeout: 1 * time.Second}
+	if server.Role != Leader {
+		return
+	}
+
+	for i := 0; i < server.NumPeers; i++ {
+		peer_id := server.Peers[i]
+		// var heartbeat AppendEntriesRPC
+
+		heartbeat := AppendEntriesRPC{
+			Term:         server.CurrentTerm,
+			LeaderId:     server.ID,
+			PrevLogIndex: server.NextIndicies[peer_id] - 1,
+			PrevLogTerm:  server.CurrentTerm - 1,
+			Entries:      []Log{},
+			CommitIndex:  server.CommitIdx}
+
+		heartbeat_json, er := json.Marshal(heartbeat)
+		if er != nil {
+			log.Println("marshal failed")
+		}
+		log.Printf("Server ID %s: trying to send heartbeat to server %s\n", server.ID, peer_id)
+		r, http_err := http_client.Post("http://localhost:"+peer_id+"/append-entry-rpc", "application/json", bytes.NewBuffer(heartbeat_json))
+
+		if http_err != nil && r != nil && r.Body != nil {
+			log.Printf("Server ID %s: heartbeat to server %s success\n", server.ID, peer_id)
+			r.Body.Close()
+		} else {
+			log.Printf("Server ID %s: heartbeat to server %s failed\n", server.ID, peer_id)
+		}
+	}
+
 }
 
 // async task run by the scheduler for every fixed amount of seconds.
@@ -209,7 +275,7 @@ func LeaderTask(server *Actor) {
 		peer_id := server.Peers[i]
 
 		if server.NextIndicies[peer_id] > server.LastLogIndicies[peer_id] && server.NextIndicies[peer_id]-1 < len(server.Logs) {
-			fmt.Println("trying to append entry to follower...")
+			log.Println("trying to append entry to follower...")
 			var last_term int
 			if server.NextIndicies[peer_id]-1 <= 0 {
 				last_term = 0
@@ -230,32 +296,38 @@ func LeaderTask(server *Actor) {
 			if er != nil {
 				fmt.Println("marshal failed")
 			}
-			r, _ := http_client.Post("http://localhost:"+peer_id+"/append-entry-rpc", "application/json", bytes.NewBuffer(rpc_json))
-			var follower_resp AppendResp
-			err := json.NewDecoder(r.Body).Decode(&follower_resp)
+			r, http_err := http_client.Post("http://localhost:"+peer_id+"/append-entry-rpc", "application/json", bytes.NewBuffer(rpc_json))
 
-			if err != nil {
-				fmt.Println("json parse error for response body")
-				return
-			}
+			if http_err == nil && r != nil && r.Body != nil {
 
-			if !follower_resp.Success {
-				fmt.Println("append failed, decrease next index by one")
+				var follower_resp AppendResp
+				err := json.NewDecoder(r.Body).Decode(&follower_resp)
 
-				// if append fails, we roll back next index for that peer by one so that
-				//  next time the leader will try to append the previous log
-				server.NextIndicies[peer_id] -= 1
+				if err != nil {
+					log.Println("json parse error for response body")
+					return
+				}
+
+				if !follower_resp.Success {
+					log.Println("append failed, decrease next index by one")
+
+					// if append fails, we roll back next index for that peer by one so that
+					//  next time the leader will try to append the previous log
+					server.NextIndicies[peer_id] = MaxInt(0, server.NextIndicies[peer_id]-1)
+				} else {
+					log.Println("append success")
+
+					// if append succeeded, update next index and last log index accordingly
+					server.LastLogIndicies[peer_id] = server.NextIndicies[peer_id]
+					server.NextIndicies[peer_id] += 1
+
+					// TODO: handle commit index here
+				}
+				r.Body.Close()
+				server.PrintLeaderState()
 			} else {
-				fmt.Println("append success")
-
-				// if append succeeded, update next index and last log index accordingly
-				server.LastLogIndicies[peer_id] = server.NextIndicies[peer_id]
-				server.NextIndicies[peer_id] += 1
-
-				// TODO: handle commit index here
+				log.Printf("Server ID %s: http request for AppendEntryRPC to follower %s failed\n", server.ID, peer_id)
 			}
-			r.Body.Close()
-			server.PrintLeaderState()
 		}
 	}
 
@@ -264,32 +336,35 @@ func LeaderTask(server *Actor) {
 func main() {
 	// initialization
 	// read from input: id string, num_peers int, peers []string
-	id := os.Args[1]
-	num_peers_string := os.Args[2]
-	num_peers, err := strconv.Atoi(num_peers_string)
-    if err != nil {
-        // handle error
-        fmt.Println(err)
-        os.Exit(2)
-    }
-	peers := os.Args[3:]
-	if len(peers) != num_peers {
-		fmt.Println("Please correct inputs: id; num_peers; peer ports")
-		os.Exit(1)
-	}
-	server.Init(id, num_peers, peers)
-	
-	// initialize from files
+
 	/*
+			id := os.Args[1]
+			num_peers_string := os.Args[2]
+			num_peers, err := strconv.Atoi(num_peers_string)
+		    if err != nil {
+		        // handle error
+		        fmt.Println(err)
+		        os.Exit(2)
+		    }
+			peers := os.Args[3:]
+			if len(peers) != num_peers {
+				fmt.Println("Please correct inputs: id; num_peers; peer ports")
+				os.Exit(1)
+			}
+			server.Init(id, num_peers, peers)
+	*/
+
+	// initialize from files
+
 	config_filename := os.Args[1]
 	// config_filename := "./actor_config/follower1.json"
 	server.InitFromConfigFile(config_filename)
-	*/
-	
+	log.Printf("Starting server at port %s\n", server.ID)
 	if server.Role == Leader {
 		server.PrintLeaderState()
 	}
-	server.counter = 1
+
+	//server.counter = 1
 	// server.Init(id, rtype, num_peers, peers)
 	// port := os.Args[1]
 
@@ -310,6 +385,7 @@ func main() {
 	scheduler.Every(3).Seconds().Do(LeaderTask, &server)
 	scheduler.Every(3).Seconds().Do(FollowerTask, &server)
 	scheduler.Every(3).Seconds().Do(CandidateTask, &server)
+	scheduler.Every(3).Seconds().Do(HeartBeatTask, &server)
 	scheduler.StartAsync()
 
 	http.ListenAndServe(":"+server.ID, nil)

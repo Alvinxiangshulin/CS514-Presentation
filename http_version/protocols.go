@@ -16,16 +16,16 @@ type AppendEntriesRPC struct {
 }
 
 type VoteReqRPC struct {
-	candidateID  string
-	term         int
-	voteterm     int
-	lastLogIndex int
-	lastLogTerm  int
+	CandidateID  string
+	Term         int
+	Voteterm     int
+	LastLogIndex int
+	LastLogTerm  int
 }
 
 type VoteRsp struct {
-	term        int
-	voteGranted bool
+	Term        int
+	VoteGranted bool
 }
 
 // yes, it only holds a string, but we need this for unmarshalling from json payload
@@ -65,7 +65,7 @@ type LeaderLog struct {
 }
 
 func (this *AppendEntriesRPC) Print() {
-	fmt.Printf("Term: %d, LID: %d, prevIdx: %d, prevLogTerm: %d, commitIdx: %d\n", this.Term, this.LeaderId, this.PrevLogIndex, this.PrevLogTerm, this.CommitIndex)
+	fmt.Printf("Term: %d, LID: %s, prevIdx: %d, prevLogTerm: %d, commitIdx: %d\n", this.Term, this.LeaderId, this.PrevLogIndex, this.PrevLogTerm, this.CommitIndex)
 }
 
 func (this *AppendEntriesRPC) PrintEntries() {
@@ -121,7 +121,7 @@ func ParseRPCAndRespFromFile(filename string) (LeaderLog, error) {
 func PrintAppendReqs(data *AppendReqs) {
 	for i := 0; i < len(data.Rpcs); i++ {
 		req := data.Rpcs[i]
-		fmt.Printf("term: %d, leaderId: %d, prevLogIndex: %d, prevLogTerm: %d, commitIndex: %d, entries:\n", req.Term, req.LeaderId, req.PrevLogIndex, req.PrevLogTerm, req.CommitIndex)
+		fmt.Printf("term: %d, leaderId: %s, prevLogIndex: %d, prevLogTerm: %d, commitIndex: %d, entries:\n", req.Term, req.LeaderId, req.PrevLogIndex, req.PrevLogTerm, req.CommitIndex)
 		// fmt.Print(req.Entries)
 		req.PrintEntries()
 	}
