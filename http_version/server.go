@@ -328,6 +328,28 @@ func LeaderTask(server *Actor) {
 			} else {
 				log.Printf("Server ID %s: http request for AppendEntryRPC to follower %s failed\n", server.ID, peer_id)
 			}
+		} else {
+			heartbeat := AppendEntriesRPC{
+				Term:         server.CurrentTerm,
+				LeaderId:     server.ID,
+				PrevLogIndex: server.NextIndicies[peer_id] - 1,
+				PrevLogTerm:  server.CurrentTerm - 1,
+				Entries:      []Log{},
+				CommitIndex:  server.CommitIdx}
+
+			heartbeat_json, er := json.Marshal(heartbeat)
+			if er != nil {
+				log.Println("marshal failed")
+			}
+			log.Printf("Server ID %s: trying to send heartbeat to server %s\n", server.ID, peer_id)
+			r, http_err := http_client.Post("http://localhost:"+peer_id+"/append-entry-rpc", "application/json", bytes.NewBuffer(heartbeat_json))
+
+			if http_err != nil && r != nil && r.Body != nil {
+				log.Printf("Server ID %s: heartbeat to server %s success\n", server.ID, peer_id)
+				r.Body.Close()
+			} else {
+				log.Printf("Server ID %s: heartbeat to server %s failed\n", server.ID, peer_id)
+			}
 		}
 	}
 
@@ -385,7 +407,7 @@ func main() {
 	scheduler.Every(3).Seconds().Do(LeaderTask, &server)
 	scheduler.Every(3).Seconds().Do(FollowerTask, &server)
 	scheduler.Every(3).Seconds().Do(CandidateTask, &server)
-	scheduler.Every(3).Seconds().Do(HeartBeatTask, &server)
+	//scheduler.Every(3).Seconds().Do(HeartBeatTask, &server)
 	scheduler.StartAsync()
 
 	http.ListenAndServe(":"+server.ID, nil)
