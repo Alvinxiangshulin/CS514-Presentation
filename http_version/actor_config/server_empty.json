@@ -1,0 +1,12 @@
+{
+    "NumPeers": 1,
+    "CommitIdx": 0,
+    "Peers": ["8091"],
+    "CurrentTerm": 0,
+    "Logs": [],
+    "Timeout": 5,
+    "Role": "follower",
+    "ID": "8090",
+    "nextindices": [1],
+    "lastlogindices": [0]
+}

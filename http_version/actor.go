@@ -281,8 +281,8 @@ func (this *Actor) HandleVoteReq(rpc *VoteReqRPC) VoteRsp {
 	this.mu.Lock()
 	defer this.mu.Unlock()
 
-	if this.Role != Candidate {
-		panic(errors.New("tried to response to Vote Request as a non-Candidate"))
+	if this.Role != Follower {
+		panic(errors.New("tried to response to Vote Request as a non-Follower"))
 	}
 
 	if this.VotedTerm < rpc.Voteterm {
