@@ -3,8 +3,8 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io/ioutil"
+	"log"
 	"math/rand"
 	"strings"
 	"sync"
@@ -174,14 +174,14 @@ func (this *Actor) CheckPrev(index, term int) bool {
 }
 
 func (this *Actor) PrintLeaderState() {
-	fmt.Println("Leader maintained next indices:")
+	log.Println("Leader maintained next indices:")
 	for k, v := range this.NextIndicies {
-		fmt.Printf("[%s, %d]\n", k, v)
+		log.Printf("[%s, %d]\n", k, v)
 	}
 
-	fmt.Println("Leader maintained last log indices:")
+	log.Println("Leader maintained last log indices:")
 	for k, v := range this.LastLogIndicies {
-		fmt.Printf("[%s, %d]\n", k, v)
+		log.Printf("[%s, %d]\n", k, v)
 	}
 
 }
@@ -190,7 +190,7 @@ func (this *Actor) PrintLogs() {
 	this.mu.Lock()
 	defer this.mu.Unlock()
 	for i := 0; i < len(this.Logs); i++ {
-		fmt.Println(this.Logs[i].ToStr())
+		log.Println(this.Logs[i].ToStr())
 	}
 }
 
@@ -203,14 +203,16 @@ func (this *Actor) HandleAppendEntriesRPC(rpc *AppendEntriesRPC) AppendResp {
 		panic(errors.New("trying to append entry as non-follower"))
 	}
 
+	this.lastHBtime = time.Now()
+
 	if rpc.Term < this.CurrentTerm {
-		fmt.Println("rpc term less than current term, refuse")
+		log.Println("rpc term less than current term, refuse")
 		return AppendResp{this.CurrentTerm, false}
 	}
 
 	if len(rpc.Entries) == 0 {
 		// TODO: reset heartbeat timer
-		fmt.Println("heartbeat received")
+		log.Println("heartbeat received")
 		return AppendResp{-1, false}
 	}
 
@@ -218,7 +220,7 @@ func (this *Actor) HandleAppendEntriesRPC(rpc *AppendEntriesRPC) AppendResp {
 	//  term matches prevLogTerm
 	if !this.CheckPrev(rpc.PrevLogIndex, rpc.PrevLogTerm) {
 
-		fmt.Println("prev index does not match, refuse")
+		log.Println("prev index does not match, refuse")
 		return AppendResp{this.CurrentTerm, false}
 	}
 
@@ -233,7 +235,7 @@ func (this *Actor) HandleAppendEntriesRPC(rpc *AppendEntriesRPC) AppendResp {
 	}
 	this.Logs = append(this.Logs, DeepCopyLogs(rpc.Entries)...)
 
-	fmt.Println("append rpc success")
+	log.Println("append rpc success")
 	return AppendResp{this.CurrentTerm, true}
 
 }

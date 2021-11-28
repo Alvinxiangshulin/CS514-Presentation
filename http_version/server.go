@@ -137,6 +137,7 @@ func CandidateTask(server *Actor) {
 
 	for i := 0; i < server.NumPeers; i++ {
 		peer_id := server.Peers[i]
+
 		req := VoteReqRPC{
 			CandidateID:  server.ID,
 			Term:         server.CurrentTerm,
@@ -344,7 +345,7 @@ func LeaderTask(server *Actor) {
 			log.Printf("Server ID %s: trying to send heartbeat to server %s\n", server.ID, peer_id)
 			r, http_err := http_client.Post("http://localhost:"+peer_id+"/append-entry-rpc", "application/json", bytes.NewBuffer(heartbeat_json))
 
-			if http_err != nil && r != nil && r.Body != nil {
+			if http_err == nil && r != nil && r.Body != nil {
 				log.Printf("Server ID %s: heartbeat to server %s success\n", server.ID, peer_id)
 				r.Body.Close()
 			} else {

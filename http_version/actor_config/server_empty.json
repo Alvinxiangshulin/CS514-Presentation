@@ -3,8 +3,14 @@
     "CommitIdx": 0,
     "Peers": ["8091"],
     "CurrentTerm": 0,
-    "Logs": [],
-    "Timeout": 5,
+    "Logs": [
+        {
+            "Term": 0,
+            "Index": 1,
+            "Command": "Term 0 Idx 1"
+        }
+    ],
+    "Timeout": 7,
     "Role": "follower",
     "ID": "8090",
     "nextindices": [1],
