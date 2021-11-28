@@ -199,8 +199,12 @@ func (this *Actor) HandleAppendEntriesRPC(rpc *AppendEntriesRPC) AppendResp {
 	defer this.mu.Unlock()
 	// validity check ?
 
-	if this.Role != Follower {
-		panic(errors.New("trying to append entry as non-follower"))
+	if this.Role == Candidate {
+		log.Printf("Server %s: received append entry rpc, candidate -> follower\n", this.ID)
+		this.Role = Follower
+		// panic(errors.New("trying to append entry as non-follower"))
+	} else if this.Role == Leader {
+		panic(errors.New("trying to append entry as leader"))
 	}
 
 	this.lastHBtime = time.Now()
@@ -284,7 +288,9 @@ func (this *Actor) HandleVoteReq(rpc *VoteReqRPC) VoteRsp {
 	defer this.mu.Unlock()
 
 	if this.Role != Follower {
-		panic(errors.New("tried to response to Vote Request as a non-Follower"))
+		//panic(errors.New("tried to response to Vote Request as a non-Follower"))
+		log.Printf("Server %s: not follower so do not give vote\n", this.ID)
+		return VoteRsp{this.VotedTerm, false}
 	}
 
 	if this.VotedTerm < rpc.Voteterm {

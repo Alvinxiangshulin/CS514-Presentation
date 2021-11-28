@@ -1,7 +1,7 @@
 {
     "NumPeers": 2,
     "CommitIdx": 0,
-    "Peers": ["8091", "8092"],
+    "Peers": ["8090","8091"],
     "CurrentTerm": 0,
     "Logs": [
         {
@@ -10,9 +10,9 @@
             "Command": "Term 0 Idx 1"
         }
     ],
-    "Timeout": 9,
+    "Timeout": 7,
     "Role": "follower",
-    "ID": "8090",
+    "ID": "8092",
     "nextindices": [1, 1],
     "lastlogindices": [0, 0]
 }

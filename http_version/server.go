@@ -172,7 +172,7 @@ func CandidateTask(server *Actor) {
 			r.Body.Close()
 		}
 	}
-
+	log.Printf("Server %s: counter: %d\n", server.ID, server.counter)
 	// now the candidate becomes leader, need to send out heartbeat messages
 	if server.counter > server.NumPeers/2 {
 
