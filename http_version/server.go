@@ -24,10 +24,6 @@ const VTERM_EXPIRED_TIME = 4
 
 // this function implements the follower behavior to AppendEntriesRPC
 func handleAppendRPC(w http.ResponseWriter, req *http.Request) {
-
-	// TODO:
-	// currently using print for displaying debug information, should
-	//  change to log later
 	fmt.Println("Trying to handle RPC")
 
 	// extract rpc struct from json payload in request body
@@ -185,32 +181,6 @@ func CandidateTask(server *Actor) {
 		server.VotedTerm = 0
 
 		log.Printf("Server ID %s is elected leader of term %d\n", server.ID, server.CurrentTerm)
-
-		/*
-			for i := 0; i < server.NumPeers; i++ {
-				peer_id := server.Peers[i]
-				// var heartbeat AppendEntriesRPC
-
-				heartbeat := AppendEntriesRPC{
-					Term:         server.CurrentTerm,
-					LeaderId:     server.ID,
-					PrevLogIndex: server.NextIndicies[peer_id] - 1,
-					PrevLogTerm:  server.CurrentTerm - 1,
-					Entries:      []Log{},
-					CommitIndex:  server.CommitIdx}
-
-				heartbeat_json, er := json.Marshal(heartbeat)
-				if er != nil {
-					log.Println("marshal failed")
-				}
-				r, http_err := http_client.Post("http://localhost:"+peer_id+"/append-entry-rpc", "application/json", bytes.NewBuffer(heartbeat_json))
-
-				if http_err != nil && r != nil && r.Body != nil {
-					r.Body.Close()
-				}
-			}
-			server.counter = 1
-		*/
 	} else {
 
 		log.Printf("Server ID %s: Candidate -> Follower\n", server.ID)
@@ -366,23 +336,6 @@ func main() {
 	// initialization
 	// read from input: id string, num_peers int, peers []string
 
-	/*
-			id := os.Args[1]
-			num_peers_string := os.Args[2]
-			num_peers, err := strconv.Atoi(num_peers_string)
-		    if err != nil {
-		        // handle error
-		        fmt.Println(err)
-		        os.Exit(2)
-		    }
-			peers := os.Args[3:]
-			if len(peers) != num_peers {
-				fmt.Println("Please correct inputs: id; num_peers; peer ports")
-				os.Exit(1)
-			}
-			server.Init(id, num_peers, peers)
-	*/
-
 	// initialize from files
 
 	config_filename := os.Args[1]
@@ -393,15 +346,7 @@ func main() {
 		server.PrintLeaderState()
 	}
 
-	//server.counter = 1
-	// server.Init(id, rtype, num_peers, peers)
-	// port := os.Args[1]
-
-	//client
-	//http.HandleFunc("/client-api", handleClientReq)
-	//http.HandleFunc("/client-api/disable_server", handleClientReq)
 	//leader api
-	//http.HandleFunc("/leader/commit", handleClientReq)
 	http.HandleFunc("/client-api", handleClientReq)
 	//follower api
 	http.HandleFunc("/append-entry-rpc", handleAppendRPC)
@@ -414,7 +359,7 @@ func main() {
 	scheduler.Every(3).Seconds().Do(LeaderTask, &server)
 	scheduler.Every(3).Seconds().Do(FollowerTask, &server)
 	scheduler.Every(3).Seconds().Do(CandidateTask, &server)
-	//scheduler.Every(3).Seconds().Do(HeartBeatTask, &server)
+
 	scheduler.StartAsync()
 
 	http.ListenAndServe(":"+server.ID, nil)

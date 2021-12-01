@@ -28,7 +28,6 @@ type VoteRsp struct {
 	VoteGranted bool
 }
 
-// yes, it only holds a string, but we need this for unmarshalling from json payload
 type ClientRequest struct {
 	Req string
 }
@@ -58,8 +57,6 @@ type Log struct {
 }
 
 type LeaderLog struct {
-	//Requests AppendReqs
-	//Resps Responses
 	Rpcs  []AppendEntriesRPC
 	Resps []AppendResp
 }
@@ -78,9 +75,6 @@ func (this *Log) ToStr() string {
 	return fmt.Sprintf("[Term: %d, Index: %d, command: %s]", this.Term, this.Index, this.Command)
 }
 
-// TODO: maybe we need move functions below into some file called utils
-//        don't make sense having them here
-
 func DeepCopyLogs(logs []Log) []Log {
 	result := make([]Log, len(logs))
 	for i := range logs {
@@ -94,7 +88,6 @@ func DeepCopyLogs(logs []Log) []Log {
 }
 
 // Unmarshal byte array into struct holding all the requests, propagate error
-//  if necessary
 func ParseAppendReqFromFile(filename string) (AppendReqs, error) {
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
@@ -122,7 +115,6 @@ func PrintAppendReqs(data *AppendReqs) {
 	for i := 0; i < len(data.Rpcs); i++ {
 		req := data.Rpcs[i]
 		fmt.Printf("term: %d, leaderId: %s, prevLogIndex: %d, prevLogTerm: %d, commitIndex: %d, entries:\n", req.Term, req.LeaderId, req.PrevLogIndex, req.PrevLogTerm, req.CommitIndex)
-		// fmt.Print(req.Entries)
 		req.PrintEntries()
 	}
 }

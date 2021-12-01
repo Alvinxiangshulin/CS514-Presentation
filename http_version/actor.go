@@ -70,7 +70,6 @@ type Actor struct {
 }
 
 func (this *Actor) Init(id string, num_peers int, peers []string) {
-	// TODO: init peers, logs, appendcounter
 	this.CurrentTerm = 1
 	this.Role = Follower
 	this.NumPeers = num_peers
@@ -134,13 +133,6 @@ func (this *Actor) InitFromConfigFile(filename string) {
 	this.NextIndicies = make(map[string]int)
 	this.LastLogIndicies = make(map[string]int)
 
-	// for k, v := range payload.NextIndicies {
-	// 	this.NextIndicies[k] = v
-	// }
-
-	// for k, v := range payload.LastLogIndicies {
-	// 	this.LastLogIndicies[k] = v
-	// }
 	for i := 0; i < len(payload.Peers); i++ {
 		this.NextIndicies[payload.Peers[i]] = payload.NextIndices[i]
 		this.LastLogIndicies[payload.Peers[i]] = payload.LastLogIndices[i]
@@ -197,12 +189,11 @@ func (this *Actor) PrintLogs() {
 func (this *Actor) HandleAppendEntriesRPC(rpc *AppendEntriesRPC) AppendResp {
 	this.mu.Lock()
 	defer this.mu.Unlock()
-	// validity check ?
 
 	if this.Role == Candidate {
 		log.Printf("Server %s: received append entry rpc, candidate -> follower\n", this.ID)
 		this.Role = Follower
-		// panic(errors.New("trying to append entry as non-follower"))
+
 	} else if this.Role == Leader {
 		panic(errors.New("trying to append entry as leader"))
 	}
@@ -245,7 +236,6 @@ func (this *Actor) HandleAppendEntriesRPC(rpc *AppendEntriesRPC) AppendResp {
 }
 
 // leader reaction to follower responses for append rpcs
-// is this even actually used ...? can't remember :(
 func (this *Actor) HandleResp(newPrevIdx int, resp *RespPayload) bool {
 
 	this.mu.Lock()
@@ -264,8 +254,6 @@ func (this *Actor) HandleResp(newPrevIdx int, resp *RespPayload) bool {
 		this.NextIndicies[resp.PeerID] -= 1
 		return false
 	}
-
-	// TODO
 
 	return true
 }
@@ -288,7 +276,6 @@ func (this *Actor) HandleVoteReq(rpc *VoteReqRPC) VoteRsp {
 	defer this.mu.Unlock()
 
 	if this.Role != Follower {
-		//panic(errors.New("tried to response to Vote Request as a non-Follower"))
 		log.Printf("Server %s: not follower so do not give vote\n", this.ID)
 		return VoteRsp{this.VotedTerm, false}
 	}
