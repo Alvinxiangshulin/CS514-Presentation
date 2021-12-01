@@ -3,21 +3,23 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io/ioutil"
+	"log"
+	"math/rand"
 	"strings"
 	"sync"
+	"time"
 )
 
 type ActorConfig struct {
 	NumPeers       int
 	CommitIdx      int
-	Peers          []string
+	Peers          []string //all servers' port number
 	CurrentTerm    int
 	Logs           []Log
 	Timeout        int
 	Role           string
-	ID             string
+	ID             string // current server's index in Servers []
 	NextIndices    []int
 	LastLogIndices []int
 }
@@ -59,21 +61,32 @@ type Actor struct {
 	Role    RoleType
 
 	// port number of the actor, assuming this is unique in system
-	ID       string
-	VotedFor string
+	ID        string
+	VotedTerm int
+
+	counter    int
+	lastHBtime time.Time
+	lastVRtime time.Time
 }
 
-func (this *Actor) Init(id string, r RoleType, num_peers int, peers []string) {
+func (this *Actor) Init(id string, num_peers int, peers []string) {
 	// TODO: init peers, logs, appendcounter
-	this.CurrentTerm = 1
-	this.Role = r
+
+	this.ID = id
+	this.CurrentTerm = 0
+	this.Role = Follower
 	this.NumPeers = num_peers
 	this.NextIndicies = make(map[string]int)
 	this.LastLogIndicies = make(map[string]int)
 	this.AppendCounter = make([]int, 0)
 
 	this.Logs = make([]Log, 0)
-	this.VotedFor = ""
+	this.Logs = append(this.Logs, Log{
+		Term:    0,
+		Index:   1,
+		Command: "Term 0 Idx 1",
+	})
+	this.VotedTerm = -1
 
 	for i := 0; i < this.NumPeers; i++ {
 		this.NextIndicies[peers[i]] = 1
@@ -81,12 +94,18 @@ func (this *Actor) Init(id string, r RoleType, num_peers int, peers []string) {
 	}
 
 	this.CommitIdx = 0
-	this.Timeout = 100
+
+	var min, max int = 3, 15
+	this.Timeout = rand.Intn(max-min) + min
 
 	this.Peers = make([]string, len(peers))
 	for i := 0; i < len(peers); i++ {
 		this.Peers[i] = peers[i]
 	}
+
+	this.lastHBtime = time.Now()
+	this.lastVRtime = time.Now()
+	this.counter = 1
 }
 
 func (this *Actor) InitFromConfigFile(filename string) {
@@ -121,18 +140,11 @@ func (this *Actor) InitFromConfigFile(filename string) {
 		this.Role = Follower
 	}
 
-	this.VotedFor = ""
+	this.VotedTerm = -1
 
 	this.NextIndicies = make(map[string]int)
 	this.LastLogIndicies = make(map[string]int)
 
-	// for k, v := range payload.NextIndicies {
-	// 	this.NextIndicies[k] = v
-	// }
-
-	// for k, v := range payload.LastLogIndicies {
-	// 	this.LastLogIndicies[k] = v
-	// }
 	for i := 0; i < len(payload.Peers); i++ {
 		this.NextIndicies[payload.Peers[i]] = payload.NextIndices[i]
 		this.LastLogIndicies[payload.Peers[i]] = payload.LastLogIndices[i]
@@ -140,6 +152,10 @@ func (this *Actor) InitFromConfigFile(filename string) {
 	}
 
 	this.AppendCounter = make([]int, len(this.Logs))
+
+	this.lastHBtime = time.Now()
+	this.lastVRtime = time.Now()
+	this.counter = 1
 }
 
 func (this *Actor) CheckPrev(index, term int) bool {
@@ -162,14 +178,14 @@ func (this *Actor) CheckPrev(index, term int) bool {
 }
 
 func (this *Actor) PrintLeaderState() {
-	fmt.Println("Leader maintained next indices:")
+	log.Println("Leader maintained next indices:")
 	for k, v := range this.NextIndicies {
-		fmt.Printf("[%s, %d]\n", k, v)
+		log.Printf("[%s, %d]\n", k, v)
 	}
 
-	fmt.Println("Leader maintained last log indices:")
+	log.Println("Leader maintained last log indices:")
 	for k, v := range this.LastLogIndicies {
-		fmt.Printf("[%s, %d]\n", k, v)
+		log.Printf("[%s, %d]\n", k, v)
 	}
 
 }
@@ -178,28 +194,32 @@ func (this *Actor) PrintLogs() {
 	this.mu.Lock()
 	defer this.mu.Unlock()
 	for i := 0; i < len(this.Logs); i++ {
-		fmt.Println(this.Logs[i].ToStr())
+		log.Println(this.Logs[i].ToStr())
 	}
 }
 
 func (this *Actor) HandleAppendEntriesRPC(rpc *AppendEntriesRPC) AppendResp {
 	this.mu.Lock()
 	defer this.mu.Unlock()
-	// validity check ?
 
-	if this.Role != Follower {
-		panic(errors.New("trying to append entry as non-follower"))
+	// validity check ?
+	if this.Role == Candidate {
+		log.Printf("Server %s: received append entry rpc, candidate -> follower\n", this.ID)
+		this.Role = Follower
+	} else if this.Role == Leader {
+		panic(errors.New("trying to append entry as leader"))
 	}
 
+	// reset heart beat timer
+	this.lastHBtime = time.Now()
+
 	if rpc.Term < this.CurrentTerm {
-		fmt.Println("rpc term less than current term, refuse")
+		log.Println("rpc term less than current term, refuse")
 		return AppendResp{this.CurrentTerm, false}
 	}
 
 	if len(rpc.Entries) == 0 {
-		// TODO: reset heartbeat timer
-
-		fmt.Println("heartbeat received")
+		log.Println("heartbeat received")
 		return AppendResp{-1, false}
 	}
 
@@ -207,12 +227,14 @@ func (this *Actor) HandleAppendEntriesRPC(rpc *AppendEntriesRPC) AppendResp {
 	//  term matches prevLogTerm
 	if !this.CheckPrev(rpc.PrevLogIndex, rpc.PrevLogTerm) {
 
-		fmt.Println("prev index does not match, refuse")
+		log.Println("prev index does not match, refuse")
 		return AppendResp{this.CurrentTerm, false}
 	}
 
-	if rpc.Term > this.CurrentTerm {
+	if rpc.Term >= this.CurrentTerm {
+		this.lastHBtime = time.Now()
 		this.CurrentTerm = rpc.Term
+		this.VotedTerm = 0
 	}
 
 	if rpc.PrevLogIndex < len(this.Logs)-1 {
@@ -220,13 +242,12 @@ func (this *Actor) HandleAppendEntriesRPC(rpc *AppendEntriesRPC) AppendResp {
 	}
 	this.Logs = append(this.Logs, DeepCopyLogs(rpc.Entries)...)
 
-	fmt.Println("append rpc success")
+	log.Println("append rpc success")
 	return AppendResp{this.CurrentTerm, true}
 
 }
 
 // leader reaction to follower responses for append rpcs
-// is this even actually used ...? can't remember :(
 func (this *Actor) HandleResp(newPrevIdx int, resp *RespPayload) bool {
 
 	this.mu.Lock()
@@ -246,8 +267,6 @@ func (this *Actor) HandleResp(newPrevIdx int, resp *RespPayload) bool {
 		return false
 	}
 
-	// TODO
-
 	return true
 }
 
@@ -262,4 +281,34 @@ func (this *Actor) ReceiveClientRequest(req string) {
 
 	new_log := Log{this.CurrentTerm, len(this.Logs) + 1, req}
 	this.Logs = append(this.Logs, new_log)
+}
+
+func (this *Actor) HandleVoteReq(rpc *VoteReqRPC) VoteRsp {
+	this.mu.Lock()
+	defer this.mu.Unlock()
+
+	if this.Role != Follower {
+		log.Printf("Server %s: not follower so do not give vote\n", this.ID)
+		return VoteRsp{this.VotedTerm, false}
+	}
+
+	if this.VotedTerm < rpc.Voteterm {
+		this.VotedTerm = rpc.Voteterm
+		this.lastVRtime = time.Now()
+	} else {
+		return VoteRsp{this.VotedTerm, false}
+	}
+
+	if this.CurrentTerm > rpc.Term {
+		return VoteRsp{this.VotedTerm, false}
+	} else {
+		this.lastVRtime = time.Now()
+	}
+
+	if len(this.Logs) <= rpc.LastLogIndex+1 {
+		return VoteRsp{this.VotedTerm, true}
+	} else {
+		return VoteRsp{this.VotedTerm, false}
+	}
+
 }
