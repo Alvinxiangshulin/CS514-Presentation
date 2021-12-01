@@ -7,7 +7,9 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
+	"runtime"
 	"time"
 
 	"github.com/go-co-op/gocron"
@@ -360,6 +362,7 @@ func LeaderTask(server *Actor) {
 }
 
 func main() {
+	runtime.SetBlockProfileRate(1)
 	// initialization
 	// read from input: id string, num_peers int, peers []string
 
