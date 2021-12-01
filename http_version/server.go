@@ -3,12 +3,11 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
+	"flag"
 	"log"
 	"math/rand"
 	"net/http"
 	_ "net/http/pprof"
-	"os"
 	"runtime"
 	"time"
 
@@ -24,14 +23,15 @@ const VTERM_EXPIRED_TIME = 4
 
 // this function implements the follower behavior to AppendEntriesRPC
 func handleAppendRPC(w http.ResponseWriter, req *http.Request) {
-	fmt.Println("Trying to handle RPC")
+
+	log.Println("Trying to handle RPC")
 
 	// extract rpc struct from json payload in request body
 	//  assuming the leader sends a post request
 	var rpc AppendEntriesRPC
 	err := json.NewDecoder(req.Body).Decode(&rpc)
 
-	fmt.Println("Append RPC received:")
+	log.Println("Append RPC received:")
 	rpc.Print()
 	rpc.PrintEntries()
 
@@ -46,9 +46,9 @@ func handleAppendRPC(w http.ResponseWriter, req *http.Request) {
 	// advance state machine and get response
 	resp := server.HandleAppendEntriesRPC(&rpc)
 
-	fmt.Println("Follower log after rpc:")
+	log.Println("Follower log after rpc:")
 	server.PrintLogs()
-	fmt.Printf("%d, %t\n", resp.Term, resp.Success)
+	log.Printf("%d, %t\n", resp.Term, resp.Success)
 
 	// return response to leader as json
 	json.NewEncoder(w).Encode(resp)
@@ -58,7 +58,7 @@ func handleAppendRPC(w http.ResponseWriter, req *http.Request) {
 //  and append to its own logs. These will be appended to follower afterwards.
 //   See AppendRpcTask for more detail
 func handleClientReq(w http.ResponseWriter, req *http.Request) {
-	fmt.Println("Trying to handle client request")
+	log.Println("Trying to handle client request")
 	var creq ClientRequest
 
 	err := json.NewDecoder(req.Body).Decode(&creq)
@@ -74,7 +74,7 @@ func handleClientReq(w http.ResponseWriter, req *http.Request) {
 	resp_json["message"] = "Success"
 	http_resp, err := json.Marshal(resp_json)
 	if err != nil {
-		fmt.Println("json marshal error")
+		log.Println("json marshal error")
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -83,7 +83,7 @@ func handleClientReq(w http.ResponseWriter, req *http.Request) {
 }
 
 func handleVoteReq(w http.ResponseWriter, req *http.Request) {
-	fmt.Println("Trying to handle Vote Request from Follower side")
+	log.Println("Trying to handle Vote Request from Follower side")
 
 	var vreq VoteReqRPC
 
@@ -134,6 +134,7 @@ func CandidateTask(server *Actor) {
 	}
 	http_client := &http.Client{Timeout: 1 * time.Second}
 
+	// broadcast request vote rpc
 	for i := 0; i < server.NumPeers; i++ {
 		peer_id := server.Peers[i]
 
@@ -146,7 +147,7 @@ func CandidateTask(server *Actor) {
 
 		req_json, er := json.Marshal(req)
 		if er != nil {
-			fmt.Println("marshal failed")
+			log.Println("marshal failed")
 		}
 		r, http_err := http_client.Post("http://localhost:"+peer_id+"/request-vote", "application/json", bytes.NewBuffer(req_json))
 
@@ -183,49 +184,12 @@ func CandidateTask(server *Actor) {
 		log.Printf("Server ID %s is elected leader of term %d\n", server.ID, server.CurrentTerm)
 	} else {
 
+		// not elected as leader, fall back to follower and re-compute a timeout value
 		log.Printf("Server ID %s: Candidate -> Follower\n", server.ID)
 		server.Role = Follower
 		server.Timeout = rand.Intn(15-3) + 3
 		log.Printf("Server %s: new timeout value: %d\n", server.ID, server.Timeout)
 	}
-}
-
-func HeartBeatTask(server *Actor) {
-	server.mu.Lock()
-	defer server.mu.Unlock()
-
-	http_client := &http.Client{Timeout: 1 * time.Second}
-	if server.Role != Leader {
-		return
-	}
-
-	for i := 0; i < server.NumPeers; i++ {
-		peer_id := server.Peers[i]
-		// var heartbeat AppendEntriesRPC
-
-		heartbeat := AppendEntriesRPC{
-			Term:         server.CurrentTerm,
-			LeaderId:     server.ID,
-			PrevLogIndex: server.NextIndicies[peer_id] - 1,
-			PrevLogTerm:  server.CurrentTerm - 1,
-			Entries:      []Log{},
-			CommitIndex:  server.CommitIdx}
-
-		heartbeat_json, er := json.Marshal(heartbeat)
-		if er != nil {
-			log.Println("marshal failed")
-		}
-		log.Printf("Server ID %s: trying to send heartbeat to server %s\n", server.ID, peer_id)
-		r, http_err := http_client.Post("http://localhost:"+peer_id+"/append-entry-rpc", "application/json", bytes.NewBuffer(heartbeat_json))
-
-		if http_err != nil && r != nil && r.Body != nil {
-			log.Printf("Server ID %s: heartbeat to server %s success\n", server.ID, peer_id)
-			r.Body.Close()
-		} else {
-			log.Printf("Server ID %s: heartbeat to server %s failed\n", server.ID, peer_id)
-		}
-	}
-
 }
 
 // async task run by the scheduler for every fixed amount of seconds.
@@ -270,7 +234,7 @@ func LeaderTask(server *Actor) {
 			// TODO: add error handling
 			rpc_json, er := json.Marshal(append_rpc)
 			if er != nil {
-				fmt.Println("marshal failed")
+				log.Println("marshal failed")
 			}
 			r, http_err := http_client.Post("http://localhost:"+peer_id+"/append-entry-rpc", "application/json", bytes.NewBuffer(rpc_json))
 
@@ -331,35 +295,56 @@ func LeaderTask(server *Actor) {
 
 }
 
+// check if a flag is set
+// https://stackoverflow.com/questions/35809252/check-if-flag-was-provided-in-go
+func isFlagPassed(name string) bool {
+	found := false
+	flag.Visit(func(f *flag.Flag) {
+		if f.Name == name {
+			found = true
+		}
+	})
+	return found
+}
+
 func main() {
+
+	// for blocking time profiling
 	runtime.SetBlockProfileRate(1)
-	// initialization
-	// read from input: id string, num_peers int, peers []string
 
-	// initialize from files
+	// command line argument parsing
+	port := flag.String("p", "8090", "port number")
+	num_peers := flag.Int("n", 0, "#peers")
+	config_file := flag.String("f", "actor_config/follower1.json", "config file name")
+	flag.Parse()
+	peers := flag.Args()
 
-	config_filename := os.Args[1]
-	// config_filename := "./actor_config/follower1.json"
-	server.InitFromConfigFile(config_filename)
-	log.Printf("Starting server at port %s\n", server.ID)
+	if isFlagPassed("f") {
+		server.InitFromConfigFile(*config_file)
+	} else {
+		if !isFlagPassed("p") || !isFlagPassed("n") || *num_peers != len(peers) {
+			log.Fatal("Command argument format error")
+		}
+		server.Init(*port, *num_peers, peers)
+	}
+
+	log.Printf("Starting server at port %s with %d peers\n", server.ID, server.NumPeers)
 	if server.Role == Leader {
 		server.PrintLeaderState()
 	}
 
-	//leader api
+	// register http handlers
 	http.HandleFunc("/client-api", handleClientReq)
-	//follower api
 	http.HandleFunc("/append-entry-rpc", handleAppendRPC)
 	http.HandleFunc("/request-vote", handleVoteReq)
 
-	// use scheduler for sending append rpcs
+	// use scheduler for sending rpcs
 	scheduler := gocron.NewScheduler(time.UTC)
 
 	// change the number here to modify the interval
 	scheduler.Every(3).Seconds().Do(LeaderTask, &server)
 	scheduler.Every(3).Seconds().Do(FollowerTask, &server)
 	scheduler.Every(3).Seconds().Do(CandidateTask, &server)
-
 	scheduler.StartAsync()
 
 	http.ListenAndServe(":"+server.ID, nil)

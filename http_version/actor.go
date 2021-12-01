@@ -70,7 +70,10 @@ type Actor struct {
 }
 
 func (this *Actor) Init(id string, num_peers int, peers []string) {
-	this.CurrentTerm = 1
+	// TODO: init peers, logs, appendcounter
+
+	this.ID = id
+	this.CurrentTerm = 0
 	this.Role = Follower
 	this.NumPeers = num_peers
 	this.NextIndicies = make(map[string]int)
@@ -78,7 +81,12 @@ func (this *Actor) Init(id string, num_peers int, peers []string) {
 	this.AppendCounter = make([]int, 0)
 
 	this.Logs = make([]Log, 0)
-	this.VotedTerm = 0
+	this.Logs = append(this.Logs, Log{
+		Term:    0,
+		Index:   1,
+		Command: "Term 0 Idx 1",
+	})
+	this.VotedTerm = -1
 
 	for i := 0; i < this.NumPeers; i++ {
 		this.NextIndicies[peers[i]] = 1
@@ -87,13 +95,17 @@ func (this *Actor) Init(id string, num_peers int, peers []string) {
 
 	this.CommitIdx = 0
 
-	var min, max int = 2, 6
+	var min, max int = 3, 15
 	this.Timeout = rand.Intn(max-min) + min
 
 	this.Peers = make([]string, len(peers))
 	for i := 0; i < len(peers); i++ {
 		this.Peers[i] = peers[i]
 	}
+
+	this.lastHBtime = time.Now()
+	this.lastVRtime = time.Now()
+	this.counter = 1
 }
 
 func (this *Actor) InitFromConfigFile(filename string) {
@@ -190,14 +202,15 @@ func (this *Actor) HandleAppendEntriesRPC(rpc *AppendEntriesRPC) AppendResp {
 	this.mu.Lock()
 	defer this.mu.Unlock()
 
+	// validity check ?
 	if this.Role == Candidate {
 		log.Printf("Server %s: received append entry rpc, candidate -> follower\n", this.ID)
 		this.Role = Follower
-
 	} else if this.Role == Leader {
 		panic(errors.New("trying to append entry as leader"))
 	}
 
+	// reset heart beat timer
 	this.lastHBtime = time.Now()
 
 	if rpc.Term < this.CurrentTerm {
@@ -206,7 +219,6 @@ func (this *Actor) HandleAppendEntriesRPC(rpc *AppendEntriesRPC) AppendResp {
 	}
 
 	if len(rpc.Entries) == 0 {
-		// TODO: reset heartbeat timer
 		log.Println("heartbeat received")
 		return AppendResp{-1, false}
 	}
