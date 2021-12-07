@@ -1,1 +1,1 @@
-# CS514-Presentation
+This is a Raft simulator in Golang.
